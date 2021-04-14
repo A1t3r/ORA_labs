@@ -330,21 +330,43 @@ int main() {
 
     filename_text = "../benchmarks/good_t_";
     filename_template = "../benchmarks/good_w_";
-    std::cout<<"\nNow good template and good text are testing..."<<std::endl;
+    std::cout<<"\n\n\nNow good template and good text are testing..."<<std::endl;
     std::ifstream file_text (filename_text + "4.txt");
     std::ifstream file_template (filename_template + "4.txt");
-    getline(file_text, text);
-    std::cout<<text;
-    return 0;
-    for(int n = 1; n < 5; ++n){
-        std::cout<<"now testing sample with number "<<n<<"\n";
-        std::ifstream file_text (filename_text+std::to_string(n) + ".txt");
-        std::ifstream file_template (filename_template+std::to_string(n) + ".txt");
-        file_text>>text, file_template>>mask;
-        std::cout<<"results: "<<"\n";
-        std::cout<<"naive "<< naive_search(text, mask) << std::endl;
-        std::cout<<"AMBH "<< AMBH(text, mask) << std::endl;
+    for(int n = 0; n < 3; ++n){
+        std::cout << names[n] << " - is now checking" << std::endl;
+        for(int j = 1; j < 5; ++j) {
+            std::cout << "now testing sample with number " << j << "\n";
+            std::ifstream file_text(filename_text + std::to_string(j) + ".txt");
+            std::ifstream file_template(filename_template + std::to_string(j) + ".txt");
+            getline(file_text, text);
+            getline(file_template, mask);
+            std::cout<<func_arr[n](text, mask)<<"\n";
+            pr_StartTime = std::chrono::steady_clock::now();
+            for (int i = 0; i < 10; ++i)
+                func_arr[n](text, mask);
+            pr_EndTime = std::chrono::steady_clock::now();
+            std::cout << " total time is = "
+                      << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                      << std::endl;
+        }
     }
-
+    std::cout  << "karasik - is now checking" << std::endl;
+    for(int j = 1; j < 5; ++j) {
+        std::cout << "now testing sample with number " << j << "\n";
+        std::ifstream file_text(filename_text + std::to_string(j) + ".txt");
+        std::ifstream file_template(filename_template + std::to_string(j) + ".txt");
+        getline(file_text, text);
+        getline(file_template, mask);
+        std::vector<std::string> tmp_vec{mask};
+        std::cout<<Aho_Corasic_algorithm(text, tmp_vec)[0]<<"\n";
+        pr_StartTime = std::chrono::steady_clock::now();
+        for (int i = 0; i < 10; ++i)
+            Aho_Corasic_algorithm(text, tmp_vec);
+        pr_EndTime = std::chrono::steady_clock::now();
+        std::cout << " total time is = "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                  << std::endl;
+    }
     return 0;
 }

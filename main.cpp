@@ -6,10 +6,12 @@
 #include <cmath>
 #include <math.h>
 #include <fstream>
+#include <vector>
+#include <chrono>
 
 
 struct Node {
-	map<char, Node*> links;
+	std::map<char, Node*> links;
 	Node* fake_link = 0;
 	bool isFinish = false;
 	int point = -1;
@@ -26,10 +28,10 @@ struct Father_Son_Value {
 class Bor {
 private:
 	Node* root;
-	vector<bool> found;
+    std::vector<bool> found;
 	size_t size = 0;
 
-	void AddPattern(const string& pattern, int point) {
+	void AddPattern(const std::string& pattern, int point) {
 		Node* current_node = root;
 		Node* new_node = 0;
 
@@ -54,8 +56,8 @@ private:
 		delete node;
 	}
 
-	void Print(Node* node, string prefix) {
-		cout << prefix << node << "|" << node->fake_link << endl;
+	void Print(Node* node, std::string prefix) {
+        std::cout << prefix << node << "|" << node->fake_link << std::endl;
 		for (auto& child_node : node->links) {
 			Print(child_node.second, prefix + "  ");
 		}
@@ -82,7 +84,7 @@ private:
 	}
 
 public:
-	Bor(const vector<string>& patterns) {
+	Bor(const std::vector<std::string>& patterns) {
 		size = patterns.size();
 		root = new Node();
 
@@ -92,7 +94,7 @@ public:
 			number++;
 		}
 
-		queue<Father_Son_Value*> Fathers_and_Sons;
+        std::queue<Father_Son_Value*> Fathers_and_Sons;
 
 		root->fake_link = root;
 		for (auto& pair : root->links) {
@@ -121,7 +123,7 @@ public:
 
 	}
 
-	void FindIn(string& base) {
+	void FindIn(std::string& base) {
 		for (int i = 0; i < size; i++) {
 			found.push_back(false);
 		}
@@ -155,7 +157,7 @@ public:
 
 	}
 
-	vector<bool> getFoundCopy() {
+    std::vector<bool> getFoundCopy() {
 		return found;
 	}
 
@@ -169,7 +171,7 @@ public:
 };
 
 
-vector<bool> Aho_Corasic_algorithm(string& base, vector<string>& patterns) {
+std::vector<bool> Aho_Corasic_algorithm(std::string& base, std::vector<std::string>& patterns) {
 	Bor bor(patterns);
 	bor.FindIn(base);
 	return bor.getFoundCopy();
@@ -177,15 +179,15 @@ vector<bool> Aho_Corasic_algorithm(string& base, vector<string>& patterns) {
 
 
 void run_Aho_Corasic_algorithm_demo() {
-	vector<string> pats = { "acc", "ac", "cat", "gcc", "oca", "a", "tua", "tgg" };
-	string base = "ocatuaccbutnotgc";
+    std::vector<std::string> pats = { "acc", "ac", "cat", "gcc", "oca", "a", "tua", "tgg" };
+    std::string base = "ocatuaccbutnotgc";
 	int number = 0;
 	for (auto item : Aho_Corasic_algorithm(base, pats)) {
-		string buf = "not found";
-		if (item == 1) buf = "found"
-		cout << pats[number] << ": " << buf << endl;
+        std::string buf = "not found";
+		if (item == 1) buf = "found";
+        std::cout << pats[number] << ": " << buf << std::endl;
 
-		number++:
+		number++;
 	}
 	return;
 }
@@ -204,11 +206,16 @@ static int check_string_part_reverse(std::string& text, std::string& mask, size_
     return -1;
 }
 
-static int get_pol_hash(std::string base, int p){
+int get_pol_hash(std::string& base, size_t len, int p){
     int hash = 0;
-    for(size_t i = 0; i<base.size(); ++i)
-        hash += (int)base[i]*pow(p,i);
-    return hash%p;
+    for(size_t i = 0; i < len; ++i) {
+        hash += (int)base[i] * pow(p, i);
+    }
+    return hash;
+}
+
+int recalculate_hash(std::string& base, size_t start, size_t mask_size, int prev_hash, int p){
+    return (prev_hash-(int)base[start-1])/p + base[start+mask_size-1]*pow(p,mask_size-1);
 }
 
 int naive_search(std::string& text, std::string& mask){
@@ -245,49 +252,90 @@ int AMBH(std::string& text, std::string& mask){
 }
 
 int ARK(std::string& text, std::string& mask) {
-    int p = 97;
-    int mask_hash = get_pol_hash(mask, p);
-//    int table_of_hashs[text.size()-mask.size()+1]; STILL IN PROGRESS
-    for(size_t i = 0; i<text.size(); ++i){
-
-        // TO DO    cutted string to pol hash
+    int p = 901;
+    int mask_hash = get_pol_hash(mask, mask.size(), p)%p;
+    std::vector<int> table_of_hashs{get_pol_hash(text, mask.size(), p)};
+    for(size_t i = 1; i<text.size()-mask.size()+1; ++i){
+        table_of_hashs.push_back(recalculate_hash(text, i, mask.size(), table_of_hashs[i-1],p));
     }
-    return 0;
+    for(size_t i = 0; i<table_of_hashs.size(); ++i){
+        if(table_of_hashs[i]%p == mask_hash)
+            if(check_string_part(text, mask, i))
+                return i;
+    }
+    return -1;
 }
 
 int main() {
-	run_Aho_Corasic_algorithm_demo();
-	return 0;
-
+//	run_Aho_Corasic_algorithm_demo();
+//	return 0;
     std::string text;
     std::string mask;
-    /*
+/*
     text = "abcabaabcabca";
     mask = "abaa";
     std::cout << naive_search(text, mask) << std::endl;
     std::cout << AMBH(text, mask) << std::endl;
+    std::cout << ARK(text, mask) << std::endl;
 
     text = "personal daata";
     mask = "daata";
     std::cout << naive_search(text, mask) << std::endl;
     std::cout << AMBH(text, mask) << std::endl;
+    std::cout << ARK(text, mask) << std::endl;
 */
+    std::chrono::steady_clock::time_point pr_StartTime;
+    std::chrono::steady_clock::time_point pr_EndTime;
+
+    int (*func_arr[3])(std::string&, std::string&)={naive_search, AMBH, ARK};
+    std::vector<std::string>names={"naive","AMBH", "ARK"};
+
     std::string filename_text = "../benchmarks/bad_t_";
     std::string filename_template = "../benchmarks/bad_w_";
     std::cout<<"Now bad template and bad text are testing..."<<std::endl;
-    for(int n = 1; n < 5; ++n){
-        std::cout<<"now testing sample with number "<<n<<"\n";
-        std::ifstream file_text (filename_text+std::to_string(n) + ".txt");
-        std::ifstream file_template (filename_template+std::to_string(n) + ".txt");
-        file_text>>text, file_template>>mask;
-        std::cout<<"results: "<<"\n";
-        std::cout<<"naive "<< naive_search(text, mask) << std::endl;
-        std::cout<<"AMBH "<< AMBH(text, mask) << std::endl;
+
+    for(int n = 0; n < 3; ++n){
+        std::cout << names[n] << " - is now checking" << std::endl;
+        for(int j = 1; j < 5; ++j) {
+            std::cout << "now testing sample with number " << j << "\n";
+            std::ifstream file_text(filename_text + std::to_string(j) + ".txt");
+            std::ifstream file_template(filename_template + std::to_string(j) + ".txt");
+            file_text >> text, file_template >> mask;
+            std::cout<<func_arr[n](text, mask)<<"\n";
+            pr_StartTime = std::chrono::steady_clock::now();
+            for (int i = 0; i < 10; ++i)
+                func_arr[n](text, mask);
+            pr_EndTime = std::chrono::steady_clock::now();
+            std::cout << " total time is = "
+                      << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                      << std::endl;
+        }
     }
-/*
+    std::cout  << "karasik - is now checking" << std::endl;
+    for(int j = 1; j < 5; ++j) {
+        std::cout << "now testing sample with number " << j << "\n";
+        std::ifstream file_text(filename_text + std::to_string(j) + ".txt");
+        std::ifstream file_template(filename_template + std::to_string(j) + ".txt");
+        file_text >> text, file_template >> mask;
+        std::vector<std::string> tmp_vec{mask};
+        std::cout<<Aho_Corasic_algorithm(text, tmp_vec)[0]<<"\n";
+        pr_StartTime = std::chrono::steady_clock::now();
+        for (int i = 0; i < 10; ++i)
+            Aho_Corasic_algorithm(text, tmp_vec);
+        pr_EndTime = std::chrono::steady_clock::now();
+        std::cout << " total time is = "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                  << std::endl;
+    }
+
     filename_text = "../benchmarks/good_t_";
     filename_template = "../benchmarks/good_w_";
     std::cout<<"\nNow good template and good text are testing..."<<std::endl;
+    std::ifstream file_text (filename_text + "4.txt");
+    std::ifstream file_template (filename_template + "4.txt");
+    getline(file_text, text);
+    std::cout<<text;
+    return 0;
     for(int n = 1; n < 5; ++n){
         std::cout<<"now testing sample with number "<<n<<"\n";
         std::ifstream file_text (filename_text+std::to_string(n) + ".txt");
@@ -297,6 +345,6 @@ int main() {
         std::cout<<"naive "<< naive_search(text, mask) << std::endl;
         std::cout<<"AMBH "<< AMBH(text, mask) << std::endl;
     }
-*/
+
     return 0;
 }

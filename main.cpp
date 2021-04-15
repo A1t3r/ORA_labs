@@ -218,15 +218,15 @@ static int check_string_part_reverse(std::string& text, std::string& mask, size_
     return -1;
 }
 
-long int get_pol_hash(std::string& base, size_t len, int p){
-    long int hash = 0;
+long long get_pol_hash(std::string& base, size_t len, int p){
+    long long hash = 0;
     for(size_t i = 0; i < len; ++i) {
         hash += (int)base[i] * pow(p, i);
     }
     return hash;
 }
 
-int recalculate_hash(std::string& base, size_t start, size_t mask_size, int prev_hash, int p){
+long long recalculate_hash(std::string& base, size_t start, size_t mask_size, long long prev_hash, int p){
     return (prev_hash-(int)base[start-1])/p + base[start+mask_size-1]*pow(p,mask_size-1);
 }
 
@@ -268,8 +268,8 @@ int ARK(std::string& text, std::string& mask) {
     std::chrono::steady_clock::time_point pr_EndTime;
     int p = 97;
     int mask_hash = get_pol_hash(mask, mask.size(), p)%p;
-    std::vector<long int> table_of_hashs{get_pol_hash(text, mask.size(), p)};
-    table_of_hashs.resize(text.size()-mask.size()+1);
+    std::vector<long long> table_of_hashs(text.size()-mask.size()+1);
+    table_of_hashs[0]=get_pol_hash(text, mask.size(), p);
     pr_StartTime = std::chrono::steady_clock::now();
     for(size_t i = 1; i<text.size()-mask.size()+1; ++i){
         table_of_hashs[i]=(recalculate_hash(text, i, mask.size(), table_of_hashs[i-1], p));
@@ -390,7 +390,7 @@ int main() {
 
     for(int n = 0; n < 4; ++n){
         std::cout << names[n] << " - is now checking" << std::endl;
-        for(int j = 1; j < 6; ++j) {
+        for(int j = 1; j < 5; ++j) {
             std::cout << "now testing sample with number " << j << "\n";
             std::ifstream file_text(filename_text + std::to_string(j) + ".txt");
             std::ifstream file_template(filename_template + std::to_string(j) + ".txt");

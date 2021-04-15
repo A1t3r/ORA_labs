@@ -8,7 +8,9 @@
 #include <fstream>
 #include <vector>
 #include <chrono>
+#include <Windows.h>
 
+size_t global_counter;
 
 struct Node {
     std::map<char, Node*> links;
@@ -194,20 +196,30 @@ void run_Aho_Corasic_algorithm_demo() {
 
 static bool check_string_part(std::string& text, std::string& mask, size_t pos){
     for(size_t j = 0; j < mask.size(); ++j){
+        global_counter++;
         if(text[j+pos]!=mask[j]) return false;
     }
     return true;
 }
 
-static int check_string_part_reverse(std::string& text, std::string& mask, size_t pos){
-    for(int j = mask.size()-1; j >= 0; --j){
+static int check_string_part_with_pos(std::string& text, std::string& mask, size_t pos, size_t start){
+    for(size_t j = start; j < mask.size(); ++j){
+        global_counter++;
         if(text[j+pos]!=mask[j]) return j;
     }
     return -1;
 }
 
-int get_pol_hash(std::string& base, size_t len, int p){
-    int hash = 0;
+static int check_string_part_reverse(std::string& text, std::string& mask, size_t pos){
+    for(int j = mask.size()-1; j >= 0; --j){
+        global_counter++;
+        if(text[j+pos]!=mask[j]) return j;
+    }
+    return -1;
+}
+
+long int get_pol_hash(std::string& base, size_t len, int p){
+    long int hash = 0;
     for(size_t i = 0; i < len; ++i) {
         hash += (int)base[i] * pow(p, i);
     }
@@ -252,12 +264,20 @@ int AMBH(std::string& text, std::string& mask){
 }
 
 int ARK(std::string& text, std::string& mask) {
-    int p = 901;
+    std::chrono::steady_clock::time_point pr_StartTime;
+    std::chrono::steady_clock::time_point pr_EndTime;
+    int p = 97;
     int mask_hash = get_pol_hash(mask, mask.size(), p)%p;
-    std::vector<int> table_of_hashs{get_pol_hash(text, mask.size(), p)};
+    std::vector<long int> table_of_hashs{get_pol_hash(text, mask.size(), p)};
+    table_of_hashs.resize(text.size()-mask.size()+1);
+    pr_StartTime = std::chrono::steady_clock::now();
     for(size_t i = 1; i<text.size()-mask.size()+1; ++i){
-        table_of_hashs.push_back(recalculate_hash(text, i, mask.size(), table_of_hashs[i-1],p));
+        table_of_hashs[i]=(recalculate_hash(text, i, mask.size(), table_of_hashs[i-1], p));
     }
+    pr_EndTime = std::chrono::steady_clock::now();
+ //   std::cout << " rehashing "
+ //             << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count()
+ //             << std::endl;
     for(size_t i = 0; i<table_of_hashs.size(); ++i){
         if(table_of_hashs[i]%p == mask_hash)
             if(check_string_part(text, mask, i))
@@ -266,52 +286,126 @@ int ARK(std::string& text, std::string& mask) {
     return -1;
 }
 
+std::vector<int> get_prefix_table(std::string& mask){
+    std::vector<int> res(mask.size());
+    res[0]=0;
+    int k = 0;
+    for(size_t i = 1; i<mask.size(); ++i){
+
+            k = res[i-1];
+            while(k > 0 && mask[k]!=mask[i]) {
+                global_counter++;
+                k = res[k - 1];
+            }
+            if(mask[k]==mask[i]) {
+                global_counter++;
+                res[i] = k + 1;
+            }
+            else res[i]=0;
+        }
+    return res;
+}
+
+int KMP(std::string& text, std::string& mask) {
+    std::vector<int> prefix_table{get_prefix_table(mask)};
+   int tmp = 0;
+   int j = 0;
+    for(size_t i = 0; i<text.size(); ++i) {
+        if(mask[j]==text[i]){
+            global_counter++;
+            j++;
+            if(j==mask.size()) return i - j + 1;
+        }
+        else if(j!=0){
+                j = prefix_table[j - 1];
+                i--;
+        }
+    }
+   /*
+    int rescnt = 0;
+
+        if(mask[i-tmp]!=text[i]){
+            rescnt=0;
+            if(i-tmp!=0) tmp += prefix_table[i-tmp-1] + 1;
+            else{
+                tmp++;
+                i++;
+            }
+            i--;
+        }
+        else {
+            rescnt++;
+            if(rescnt==mask.size()) return tmp;
+        }
+ //   }*///for(size_t i = 0; i<text.size(); ++i){
+   //     tmp = check_string_part_with_pos(text, mask, i, tmp);
+   //     if(tmp==-1)
+  //         return i;
+   //     else if(tmp!=0) {
+  //          i += prefix_table[tmp - 1];
+   //         tmp -= prefix_table[tmp - 1]+1;
+   //         i--;
+  //      }
+  //  }
+    return -1;
+}
+
 int main() {
 //	run_Aho_Corasic_algorithm_demo();
 //	return 0;
+    SetConsoleOutputCP(1251);
+    SetConsoleCP(1251);
     setlocale(LC_ALL, "rus");
     std::string text;
-    std::string mask="ак";
-   // std::cout<<mask<<std::endl;
+    std::string mask="еак";
+    std::cout<<(unsigned int)mask[0]<<std::endl;
    // std::cout<< (unsigned int)static_cast<unsigned char>(mask[0])<<std::endl;
-   // return 0;
+ //   return 0;
 
     text = "abcabaabcabca";
     mask = "abaa";
     std::cout << naive_search(text, mask) << std::endl;
     std::cout << AMBH(text, mask) << std::endl;
     std::cout << ARK(text, mask) << std::endl;
+    std::cout <<KMP(text,mask)<< std::endl;
     text = "personal daata";
     mask = "daata";
     std::cout << naive_search(text, mask) << std::endl;
     std::cout << AMBH(text, mask) << std::endl;
     std::cout << ARK(text, mask) << std::endl;
+    std::cout <<KMP(text,mask)<< std::endl;
 
+    text = "abcabeaabcabd";
+    mask = "abcabd";
+    KMP(text,mask);
     std::chrono::steady_clock::time_point pr_StartTime;
     std::chrono::steady_clock::time_point pr_EndTime;
 
-    int (*func_arr[3])(std::string&, std::string&)={naive_search, AMBH, ARK};
-    std::vector<std::string>names={"naive","AMBH", "ARK"};
+    int (*func_arr[4])(std::string&, std::string&)={naive_search, AMBH, ARK, KMP};
+    std::vector<std::string>names={"naive","AMBH", "ARK", "KMP"};
 
     std::string filename_text = "../benchmarks/bad_t_";
     std::string filename_template = "../benchmarks/bad_w_";
     std::cout<<"Now bad template and bad text are testing..."<<std::endl;
 
-    for(int n = 0; n < 3; ++n){
+    for(int n = 0; n < 4; ++n){
         std::cout << names[n] << " - is now checking" << std::endl;
-        for(int j = 1; j < 5; ++j) {
+        for(int j = 1; j < 6; ++j) {
             std::cout << "now testing sample with number " << j << "\n";
             std::ifstream file_text(filename_text + std::to_string(j) + ".txt");
             std::ifstream file_template(filename_template + std::to_string(j) + ".txt");
             file_text >> text, file_template >> mask;
             std::cout<<func_arr[n](text, mask)<<"\n";
             pr_StartTime = std::chrono::steady_clock::now();
+            global_counter = 0;
             for (int i = 0; i < 10; ++i)
                 func_arr[n](text, mask);
             pr_EndTime = std::chrono::steady_clock::now();
             std::cout << " total time is = "
                       << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                      << " number of comparisons = " << global_counter / 10
                       << std::endl;
+            global_counter = 0;
         }
     }
     std::cout  << "karasik - is now checking" << std::endl;
@@ -337,7 +431,7 @@ int main() {
     std::cout<<"\n\n\nNow good template and good text are testing..."<<std::endl;
     std::ifstream file_text (filename_text + "4.txt");
     std::ifstream file_template (filename_template + "4.txt");
-    for(int n = 0; n < 3; ++n){
+    for(int n = 0; n < 4; ++n){
         std::cout << names[n] << " - is now checking" << std::endl;
         for(int j = 1; j < 5; ++j) {
             text="";
@@ -357,12 +451,15 @@ int main() {
        //     std::cout<<mask<<std::endl;
             std::cout<<func_arr[n](text, mask)<<"\n";
             pr_StartTime = std::chrono::steady_clock::now();
+            global_counter = 0;
             for (int i = 0; i < 10; ++i)
                 func_arr[n](text, mask);
             pr_EndTime = std::chrono::steady_clock::now();
             std::cout << " total time is = "
                       << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                      << " number of comparisons = " << global_counter / 10
                       << std::endl;
+            global_counter = 0;
         }
     }
     std::cout  << "karasik - is now checking" << std::endl;

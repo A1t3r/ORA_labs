@@ -390,7 +390,7 @@ int main() {
 
     for(int n = 0; n < 4; ++n){
         std::cout << names[n] << " - is now checking" << std::endl;
-        for(int j = 1; j < 6; ++j) {
+        for(int j = 1; j < 5; ++j) {
             std::cout << "now testing sample with number " << j << "\n";
             std::ifstream file_text(filename_text + std::to_string(j) + ".txt");
             std::ifstream file_template(filename_template + std::to_string(j) + ".txt");

@@ -297,8 +297,8 @@ std::vector<int> get_prefix_table(std::string& mask){
                 global_counter++;
                 k = res[k - 1];
             }
+            global_counter++;
             if(mask[k]==mask[i]) {
-                global_counter++;
                 res[i] = k + 1;
             }
             else res[i]=0;
@@ -311,8 +311,8 @@ int KMP(std::string& text, std::string& mask) {
    int tmp = 0;
    int j = 0;
     for(size_t i = 0; i<text.size(); ++i) {
+        global_counter++;
         if(mask[j]==text[i]){
-            global_counter++;
             j++;
             if(j==mask.size()) return i - j + 1;
         }

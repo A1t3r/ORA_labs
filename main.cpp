@@ -8,6 +8,7 @@
 #include <fstream>
 #include <vector>
 #include <chrono>
+#include <locale.h>
 #include <Windows.h>
 
 size_t global_counter;
@@ -38,6 +39,7 @@ private:
         Node* new_node = 0;
 
         for (const char& sym : pattern) {
+            global_counter++;
             if (current_node->links.find(sym) == current_node->links.end()) {
                 new_node = new Node();
                 current_node->links[sym] = new_node;
@@ -66,6 +68,7 @@ private:
     }
 
     void SetFakeLink(Father_Son_Value* fsv) {
+        global_counter++;
         if (fsv->father == root) {
             fsv->son->fake_link = root;
             return;
@@ -74,6 +77,7 @@ private:
         Node* father = fsv->father->fake_link;
 
         while (father->links.find(fsv->value) == father->links.end()) {
+            global_counter++;
             if (father == root) {
                 fsv->son->fake_link = root;
                 return;
@@ -135,18 +139,20 @@ public:
         for (auto iter = base.begin(); iter < base.end(); iter++) {
             char item = *iter;
             while (true) {
+                global_counter++;
                 if (current_node->links.find(item) != current_node->links.end()) {
                     current_node = current_node->links[item];
                     break;
                 }
                 else {
+                    global_counter++;
                     if (current_node == root) {
                         break;
                     }
                     current_node = current_node->fake_link;
                 }
             }
-
+            global_counter++;
             if (current_node->isFinish) {
                 found[current_node->point] = true;
             }
@@ -174,6 +180,7 @@ public:
 
 
 std::vector<bool> Aho_Corasic_algorithm(std::string& base, std::vector<std::string>& patterns) {
+    global_counter = 0;
     Bor bor(patterns);
     bor.FindIn(base);
     return bor.getFoundCopy();
@@ -351,13 +358,18 @@ int KMP(std::string& text, std::string& mask) {
 }
 
 int main() {
+    setlocale(LC_ALL, "Russian");
+    std::cout << "привет, друг!" << std::endl;
+    return 0;
+
+
 //	run_Aho_Corasic_algorithm_demo();
 //	return 0;
     SetConsoleOutputCP(1251);
     SetConsoleCP(1251);
     setlocale(LC_ALL, "rus");
     std::string text;
-    std::string mask="РµР°Рє";
+    std::string mask="еак";
     std::cout<<(unsigned int)mask[0]<<std::endl;
    // std::cout<< (unsigned int)static_cast<unsigned char>(mask[0])<<std::endl;
  //   return 0;

@@ -1,4 +1,4 @@
-#include <iostream>
+п»ї#include <iostream>
 #include <string>
 #include <map>
 #include <vector>
@@ -225,16 +225,28 @@ static int check_string_part_reverse(std::string& text, std::string& mask, size_
     return -1;
 }
 
-long long get_pol_hash(std::string& base, size_t len, int p){
-    long long hash = 0;
+unsigned long long get_pol_hash(std::string& base, size_t len, int p){
+    unsigned long long hash = 0;
     for(size_t i = 0; i < len; ++i) {
-        hash += (int)base[i] * pow(p, i);
+        hash += (size_t)base[i] * pow(p, i);
     }
     return hash;
 }
 
-long long recalculate_hash(std::string& base, size_t start, size_t mask_size, long long prev_hash, int p){
-    return (prev_hash-(int)base[start-1])/p + base[start+mask_size-1]*pow(p,mask_size-1);
+unsigned long long get_hash(std::string& base, size_t len, int p){
+    unsigned long long hash = 0;
+    for(size_t i = 0; i < len; ++i) {
+        hash += (size_t)base[i];
+    }
+    return hash;
+}
+
+unsigned long long recalculate_hash(std::string& base, size_t start, size_t mask_size, long long prev_hash, int p){
+    return (prev_hash - (size_t)base[start-1])/p + (size_t)base[start+mask_size-1]*pow(p,mask_size-1);
+}
+
+unsigned long long recalculate_hash2(std::string& base, size_t start, size_t mask_size, long long prev_hash, int p) {
+    return (prev_hash - (size_t)base[start - 1]) + (size_t)base[start + mask_size - 1];
 }
 
 int naive_search(std::string& text, std::string& mask){
@@ -259,10 +271,37 @@ int AMBH(std::string& text, std::string& mask){
         int n = check_string_part_reverse(text, mask, i);
         if(n!=-1){
             if(n+1!=mask_len)
-                i+=ASCII_table[(int)mask[mask_len-1]]-1;
+                i+=ASCII_table[(size_t)mask[mask_len-1]]-1;
                 //  std::cout<<text[n+i]<<std::endl;
             else
-                i+=ASCII_table[(int)text[n+i]]-1;
+                i+=ASCII_table[(size_t)text[n+i]]-1;
+        }
+        else return i;
+    }
+
+    return -1;
+}
+
+int AMBHrus(std::string& text, std::string& mask) {
+    size_t mask_len = mask.size();
+    int ASCII_table[300];
+    for (size_t i = 0; i < 300; ++i)
+        ASCII_table[i] = mask_len;
+
+    for (int i = mask_len - 2; i >= 0; --i) {
+        if (ASCII_table[(size_t)mask[i] % 1000] == mask_len)
+           // std::cout<<(size_t)mask[i] % 1000<<"\n";
+            ASCII_table[(size_t)mask[i] % 1000] = mask_len - i - 1;
+    }
+
+    for (size_t i = 0; i < text.size(); ++i) {
+        int n = check_string_part_reverse(text, mask, i);
+        if (n != -1) {
+            if (n + 1 != mask_len)
+                i += ASCII_table[(size_t)mask[mask_len - 1] % 1000] - 1;
+            //  std::cout<<text[n+i]<<std::endl;
+            else
+                i += ASCII_table[(size_t)text[n + i] % 1000] - 1;
         }
         else return i;
     }
@@ -271,20 +310,13 @@ int AMBH(std::string& text, std::string& mask){
 }
 
 int ARK(std::string& text, std::string& mask) {
-    std::chrono::steady_clock::time_point pr_StartTime;
-    std::chrono::steady_clock::time_point pr_EndTime;
-    int p = 97;
-    int mask_hash = get_pol_hash(mask, mask.size(), p)%p;
-    std::vector<long long> table_of_hashs(text.size()-mask.size()+1);
-    table_of_hashs[0]=get_pol_hash(text, mask.size(), p);
-    pr_StartTime = std::chrono::steady_clock::now();
+    int p = 57;
+    auto mask_hash = get_hash(mask, mask.size(), p)%p;
+    std::vector<unsigned long long> table_of_hashs(text.size()-mask.size()+1);
+    table_of_hashs[0]=get_hash(text, mask.size(), p);
     for(size_t i = 1; i<text.size()-mask.size()+1; ++i){
-        table_of_hashs[i]=(recalculate_hash(text, i, mask.size(), table_of_hashs[i-1], p));
+        table_of_hashs[i]=(recalculate_hash2(text, i, mask.size(), table_of_hashs[i-1], p));
     }
-    pr_EndTime = std::chrono::steady_clock::now();
- //   std::cout << " rehashing "
- //             << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count()
- //             << std::endl;
     for(size_t i = 0; i<table_of_hashs.size(); ++i){
         if(table_of_hashs[i]%p == mask_hash)
             if(check_string_part(text, mask, i))
@@ -299,24 +331,24 @@ std::vector<int> get_prefix_table(std::string& mask){
     int k = 0;
     for(size_t i = 1; i<mask.size(); ++i){
 
-            k = res[i-1];
-            while(k > 0 && mask[k]!=mask[i]) {
-                global_counter++;
-                k = res[k - 1];
-            }
-            global_counter++;
-            if(mask[k]==mask[i]) {
-                res[i] = k + 1;
-            }
-            else res[i]=0;
+        k = res[i-1];
+        while(k > 0 && mask[k]!=mask[i]) {
+     //       global_counter++;
+            k = res[k - 1];
         }
+        global_counter++;
+        if(mask[k]==mask[i]) {
+            res[i] = k + 1;
+        }
+        else res[i]=0;
+    }
     return res;
 }
 
 int KMP(std::string& text, std::string& mask) {
     std::vector<int> prefix_table{get_prefix_table(mask)};
-   int tmp = 0;
-   int j = 0;
+    int tmp = 0;
+    int j = 0;
     for(size_t i = 0; i<text.size(); ++i) {
         global_counter++;
         if(mask[j]==text[i]){
@@ -324,72 +356,21 @@ int KMP(std::string& text, std::string& mask) {
             if(j==mask.size()) return i - j + 1;
         }
         else if(j!=0){
-                j = prefix_table[j - 1];
-                i--;
-        }
-    }
-   /*
-    int rescnt = 0;
-
-        if(mask[i-tmp]!=text[i]){
-            rescnt=0;
-            if(i-tmp!=0) tmp += prefix_table[i-tmp-1] + 1;
-            else{
-                tmp++;
-                i++;
-            }
+            j = prefix_table[j - 1];
             i--;
         }
-        else {
-            rescnt++;
-            if(rescnt==mask.size()) return tmp;
-        }
- //   }*///for(size_t i = 0; i<text.size(); ++i){
-   //     tmp = check_string_part_with_pos(text, mask, i, tmp);
-   //     if(tmp==-1)
-  //         return i;
-   //     else if(tmp!=0) {
-  //          i += prefix_table[tmp - 1];
-   //         tmp -= prefix_table[tmp - 1]+1;
-   //         i--;
-  //      }
-  //  }
+    }
     return -1;
 }
 
 int main() {
     setlocale(LC_ALL, "Russian");
-    std::cout << "привет, друг!" << std::endl;
-    return 0;
-
-
-//	run_Aho_Corasic_algorithm_demo();
-//	return 0;
     SetConsoleOutputCP(1251);
     SetConsoleCP(1251);
-    setlocale(LC_ALL, "rus");
+
     std::string text;
-    std::string mask="еак";
-    std::cout<<(unsigned int)mask[0]<<std::endl;
-   // std::cout<< (unsigned int)static_cast<unsigned char>(mask[0])<<std::endl;
- //   return 0;
+    std::string mask;
 
-    text = "abcabaabcabca";
-    mask = "abaa";
-    std::cout << naive_search(text, mask) << std::endl;
-    std::cout << AMBH(text, mask) << std::endl;
-    std::cout << ARK(text, mask) << std::endl;
-    std::cout <<KMP(text,mask)<< std::endl;
-    text = "personal daata";
-    mask = "daata";
-    std::cout << naive_search(text, mask) << std::endl;
-    std::cout << AMBH(text, mask) << std::endl;
-    std::cout << ARK(text, mask) << std::endl;
-    std::cout <<KMP(text,mask)<< std::endl;
-
-    text = "abcabeaabcabd";
-    mask = "abcabd";
-    KMP(text,mask);
     std::chrono::steady_clock::time_point pr_StartTime;
     std::chrono::steady_clock::time_point pr_EndTime;
 
@@ -434,15 +415,15 @@ int main() {
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "
                   << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                  << " number of comparisons = " << global_counter / 10
                   << std::endl;
     }
+    int (*func_arr2[4])(std::string&, std::string&) = { naive_search, AMBHrus, ARK, KMP };
     std::string tmp_text;
     std::string tmp_template;
-    filename_text = "../benchmarks/good_t_";
-    filename_template = "../benchmarks/good_w_";
+    filename_text = "../benchmarks/goodr_t_";
+    filename_template = "../benchmarks/goodr_w_";
     std::cout<<"\n\n\nNow good template and good text are testing..."<<std::endl;
-    std::ifstream file_text (filename_text + "4.txt");
-    std::ifstream file_template (filename_template + "4.txt");
     for(int n = 0; n < 4; ++n){
         std::cout << names[n] << " - is now checking" << std::endl;
         for(int j = 1; j < 5; ++j) {
@@ -459,13 +440,13 @@ int main() {
                 getline(file_template, tmp_template);
                 mask += tmp_template;
             }
-       //     std::cout<<text<<std::endl;
-       //     std::cout<<mask<<std::endl;
-            std::cout<<func_arr[n](text, mask)<<"\n";
+               //  std::cout<<text<<std::endl;
+               //  std::cout<<mask<<std::endl;
+            std::cout<<func_arr2[n](text, mask)<<"\n";
             pr_StartTime = std::chrono::steady_clock::now();
             global_counter = 0;
             for (int i = 0; i < 10; ++i)
-                func_arr[n](text, mask);
+                func_arr2[n](text, mask);
             pr_EndTime = std::chrono::steady_clock::now();
             std::cout << " total time is = "
                       << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
@@ -497,6 +478,7 @@ int main() {
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "
                   << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                  << " number of comparisons = " << global_counter / 10
                   << std::endl;
     }
     return 0;

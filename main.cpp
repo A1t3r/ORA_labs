@@ -3,17 +3,20 @@
 #include <string>
 #include <ctime>
 #include <algorithm>
+#include <fstream>
 
 using namespace std;
 
 struct Object {
+    int id;
 	int cost = 0;
 	int weight = 0;
+	double quality = 0.0;
 	bool used = false;
-	Object(int obj_cost, int obj_weight) {
-		cost = obj_cost;
-		weight = obj_weight;
-	}
+	short use_condition = -1;
+	Object(int obj_cost, int obj_weight, int obj_id) :
+            cost(obj_cost), weight(obj_weight), id(obj_id){
+	};
 };
 
 int ComputeCost(vector<int> ids, vector<Object>& objects, int W) {
@@ -133,27 +136,154 @@ int MDP2(vector<Object>& objects, int W) {
 	return prev[length - 1];
 }
 
+int greedyAlgorithm(vector<Object>& objects, int capacity){
+    int res = 0;
+    for(auto& obj : objects)
+        obj.quality = ((double)obj.cost / (double)obj.weight);
+    sort(objects.begin(), objects.end(), [](Object& objl, Object& objr){
+        return objl.quality > objr.quality;
+    });
+    for(size_t i = 0; i<objects.size(); ++i){
+        if(capacity - objects[i].weight >=0){
+            capacity -= objects[i].weight;
+            objects[i].used = true;
+            res += objects[i].cost;
+        }
+    }
+    return res;
+}
+
+int maxGreed(vector<Object>& objects, int capacity){
+    int res = 0;
+    sort(objects.begin(), objects.end(), [](Object& objl, Object& objr){
+        return objl.cost > objr.cost;
+    });
+    for(size_t i = 0; i<objects.size(); ++i){
+        if(capacity - objects[i].weight >=0){
+            capacity -= objects[i].weight;
+            objects[i].used = true;
+            res += objects[i].cost;
+        }
+    }
+    return res;
+}
+
+vector<bool> twoApporxAlgorithm(vector<Object>& objects, int capacity){
+    vector<bool> res(objects.size(), false);
+    auto tmp1 = objects;
+    auto tmp2 = objects;
+    if(greedyAlgorithm(tmp1, capacity) > maxGreed(tmp2, capacity)){
+        for(auto& obj: tmp1)
+            if(obj.used) res[obj.id] = true;
+    }
+    else{
+        for(auto& obj: tmp2){
+            if(obj.used) res[obj.id] = true;
+        }
+    }
+    return res;
+}
+
+vector<float> relaxedGreedyAlgorithm(vector<Object>& objects, double capacity){
+    vector<float> res(objects.size());
+    for(auto& obj : objects) {
+        if(obj.use_condition == 1) {
+            capacity -= obj.weight;
+            res[obj.id] = 1;
+        }
+        else
+            obj.quality = ((double) obj.cost / (double) obj.weight);
+    }
+    sort(objects.begin(), objects.end(), [](Object& objl, Object& objr){
+        return objl.quality > objr.quality;
+    });
+    for(size_t i = 0; i<objects.size(); ++i) {
+        if (objects[i].use_condition==-1) {
+            if (capacity - objects[i].weight >= 0) {
+                capacity -= objects[i].weight;
+                res[objects[i].id] = 1;
+            } else {
+                float a = (float) capacity / (float) objects[i].weight;
+                capacity -= a * (float)objects[i].weight;
+                res[objects[i].id] = a;
+            }
+        }
+    }
+    return res;
+}
+
+vector<float> totalvec;
+int totalcost=0;
+
+void branchAndBound(vector<Object> objects, int capacity){
+    vector<float> resvec = relaxedGreedyAlgorithm(objects, capacity);
+
+    int tmpcost = 0;
+    for(size_t i = 0; i<objects.size(); ++i)
+        if(resvec[i]) tmpcost+=objects[i].cost*resvec[i];
+    if(tmpcost>totalcost) {
+        for (size_t i = 0; i < objects.size(); ++i)
+            if (resvec[i] < 1 && resvec[i] > 0) {
+                objects[i].use_condition = 1;
+                branchAndBound(objects, capacity);
+                objects[i].use_condition = 0;
+                branchAndBound(objects, capacity);
+                return;
+            }
+    }
+
+    if(tmpcost>totalcost){
+        totalvec=resvec;
+        totalcost=tmpcost;
+    }
+}
+
 int main() {
-	vector<Object> objects = {
-		Object(4, 3),
-		Object(2, 3),
-		Object(1, 2),
-		Object(3, 5),
-		Object(5, 6),
-		Object(2, 2),
-		Object(9, 8),
-	};
 
-	unsigned int start_time = clock(); // начальное время
-	int cost = MDP2(objects, 20);
-	unsigned int end_time = clock(); // конечное время
-	
-	cout << "cost:" << cost << endl;
-	cout << "time:" << end_time - start_time << endl; // искомое время
-	return 0;
+    vector<Object> objj = {
+            {6, 1, 0},
+            {10, 2, 1},
+            {10, 3, 2}
+    };
+    branchAndBound(objj, 5);
+    auto ttmp = totalcost;
+    for(auto n : totalvec)
+        cout<<n<<" ";
+    cout<<endl;
 
+    string file_template="../data/";
 
+    int capacity = 0;
+    int p = 0;
+    int w = 0;
+    vector<Object> objects;
 
-	cout << "C best " << ptas(objects, 11, 3) << endl;
-	return 0;
+    for(int i=1; i<8; ++i) {
+        int id = 0;
+        ifstream file_capacity(file_template + "p0" + std::to_string(i) + "_c.txt");
+        file_capacity>>capacity;
+        ifstream file_p(file_template + "p0" + std::to_string(i) + "_p.txt");
+        ifstream file_w(file_template + "p0" + std::to_string(i) + "_w.txt");
+        while(!file_p.eof()){
+            file_p >> p, file_w >> w;
+            objects.emplace_back(p, w, id);
+            id++;
+        }
+
+        auto res = twoApporxAlgorithm(objects, capacity);
+        for(auto n : res)
+            cout<<n<<" ";
+        cout<<endl;
+        totalvec.clear();
+        totalcost = 0;
+     //   branchAndBound(objects, capacity);
+        cout<<totalcost<<endl;
+        for(auto n : totalvec)
+            cout<<n<<" ";
+        cout<<endl;
+        // TO DO INSERT ALGOS HERE
+        objects.clear();
+    }
+
+    return 0;
 }

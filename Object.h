@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 
-using namespace std;
 
 struct Object {
 	int id = 0;
@@ -19,7 +18,7 @@ struct Object {
 };
 
 
-vector<Object> example = {
+std::vector<Object> example = {
         { 1 , 1 },
         { 14 , 7 },
         { 3 , 33 },

@@ -6,6 +6,7 @@
 #include <chrono>
 #include <fstream>
 #include <algorithm>
+#include <utility>
 #include <thread>
 #include <mutex>
 
@@ -13,10 +14,38 @@
 
 using namespace std;
 
+int global_counter;
+
 mutex m;
 condition_variable cv;
 bool NewComp = false;
 bool FinishThread = false;
+
+template<class T>
+pair<T, T> get_cost_and_weight(vector<bool>& res, vector<Object>& objs){
+    T tmpcost = 0;
+    T tmpweight = 0;
+    for(size_t i = 0; i< objs.size(); ++i){
+        if(res[i]){
+            tmpcost += objs[i].cost;
+            tmpweight += objs[i].weight;
+        }
+    }
+    return{tmpcost, tmpweight};
+}
+
+template<class T>
+pair<T, T> get_cost_and_weight(vector<float>& res, vector<Object>& objs){
+    T tmpcost = 0;
+    T tmpweight = 0;
+    for(size_t i = 0; i< objs.size(); ++i){
+        if(res[i]){
+            tmpcost += objs[i].cost;
+            tmpweight += objs[i].weight;
+        }
+    }
+    return{tmpcost, tmpweight};
+}
 
 int ComputeCost(vector<int> ids, vector<Object>& objects, int W) {
 	int current_W = 0;
@@ -289,7 +318,7 @@ int MDP2_speedup(vector<Object>& objects, int W) {
 	return prev[length - 1];
 }
 
-int greedyAlgorithm(vector<Object>& objects, int capacity){
+static int greedyAlgorithm(vector<Object>& objects, int capacity){
     int res = 0;
     for(auto& obj : objects)
         obj.quality = ((double)obj.cost / (double)obj.weight);
@@ -306,7 +335,7 @@ int greedyAlgorithm(vector<Object>& objects, int capacity){
     return res;
 }
 
-int maxGreed(vector<Object>& objects, int capacity){
+static int maxGreed(vector<Object>& objects, int capacity){
     int res = 0;
     sort(objects.begin(), objects.end(), [](Object& objl, Object& objr){
         return objl.cost > objr.cost;
@@ -337,12 +366,15 @@ vector<bool> twoApporxAlgorithm(vector<Object>& objects, int capacity){
     return res;
 }
 
-vector<float> relaxedGreedyAlgorithm(vector<Object>& objects, double capacity){
-    vector<float> res(objects.size());
+vector<float> relaxedGreedyAlgorithm(vector<Object> objects, double capacity){
+    vector<float> res(objects.size(), 0);
     for(auto& obj : objects) {
         if(obj.use_condition == 1) {
-            capacity -= obj.weight;
-            res[obj.id] = 1;
+            if (capacity - obj.weight >= 0) {
+                capacity -= obj.weight;
+                res[obj.id] = 1;
+                }
+            else return res;
         }
         else
             obj.quality = ((double) obj.cost / (double) obj.weight);
@@ -355,7 +387,7 @@ vector<float> relaxedGreedyAlgorithm(vector<Object>& objects, double capacity){
             if (capacity - objects[i].weight >= 0) {
                 capacity -= objects[i].weight;
                 res[objects[i].id] = 1;
-            } else {
+            } else if(capacity>=0) {
                 float a = (float) capacity / (float) objects[i].weight;
                 capacity -= a * (float)objects[i].weight;
                 res[objects[i].id] = a;
@@ -370,7 +402,6 @@ int totalcost=0;
 
 void branchAndBound(vector<Object> objects, int capacity){
     vector<float> resvec = relaxedGreedyAlgorithm(objects, capacity);
-
     int tmpcost = 0;
     for(size_t i = 0; i<objects.size(); ++i)
         if(resvec[i]) tmpcost+=objects[i].cost*resvec[i];
@@ -384,7 +415,6 @@ void branchAndBound(vector<Object> objects, int capacity){
                 return;
             }
     }
-
     if(tmpcost>totalcost){
         totalvec=resvec;
         totalcost=tmpcost;
@@ -417,28 +447,17 @@ void MDP2_comp() {
 }
 
 int main() {
-	MDP2_comp();
-	return 0;
-
-    vector<Object> objj = {
-            {6, 1, 0},
-            {10, 2, 1},
-            {10, 3, 2}
-    };
-    branchAndBound(objj, 5);
-    auto ttmp = totalcost;
-    for(auto n : totalvec)
-        cout<<n<<" ";
-    cout<<endl;
-
+	//MDP2_comp();
     string file_template="../data/";
-
+    std::chrono::steady_clock::time_point pr_StartTime;
+    std::chrono::steady_clock::time_point pr_EndTime;
     int capacity = 0;
     int p = 0;
     int w = 0;
     vector<Object> objects;
 
     for(int i=1; i<8; ++i) {
+        cout<<"Now testing sample number "<<to_string(i)<<endl;
         int id = 0;
         ifstream file_capacity(file_template + "p0" + std::to_string(i) + "_c.txt");
         file_capacity>>capacity;
@@ -450,17 +469,44 @@ int main() {
             id++;
         }
 
-        auto res = twoApporxAlgorithm(objects, capacity);
+        cout<<"twoApporxAlgorithm answer: \n";
+        vector<bool> res = twoApporxAlgorithm(objects, capacity);
         for(auto n : res)
             cout<<n<<" ";
-        cout<<endl;
+        auto tmp = get_cost_and_weight<int>(res, objects);
+        cout<<", total cost = "<<get<0>(tmp)<<" total weight "<<get<1>(tmp)<<endl;
+        pr_StartTime = std::chrono::steady_clock::now();
+        global_counter = 0;
+        for(size_t i = 0; i < 10; ++i)
+            twoApporxAlgorithm(objects, capacity);
+        pr_EndTime = std::chrono::steady_clock::now();
+        std::cout << " total time is = "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                  << " number of comparisons (used estimated number of comparisons in quick sort (nlogn)) = "
+                  << objects.size()*log(objects.size())<<"\n"
+                  << std::endl;
+
         totalvec.clear();
         totalcost = 0;
-     //   branchAndBound(objects, capacity);
-        cout<<totalcost<<endl;
+        cout<<"branchAndBound answer: \n";
+        branchAndBound(objects, capacity);
         for(auto n : totalvec)
             cout<<n<<" ";
-        cout<<endl;
+        tmp = get_cost_and_weight<int>(totalvec, objects);
+        cout<<", total cost = "<<get<0>(tmp)<<" total weight "<<get<1>(tmp)<<endl;
+        pr_StartTime = std::chrono::steady_clock::now();
+        global_counter = 0;
+        for(size_t i = 0; i < 10; ++i) {
+            totalvec.clear();
+            totalcost = 0;
+            branchAndBound(objects, capacity);
+        }
+        pr_EndTime = std::chrono::steady_clock::now();
+        std::cout << " total time is = "
+                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+                  << " number of comparisons (used estimated number of comparisons in quick sort (nlogn)) = "
+                  << objects.size()*log(objects.size())<<"\n"
+                  << std::endl;
         // TO DO INSERT ALGOS HERE
         objects.clear();
     }

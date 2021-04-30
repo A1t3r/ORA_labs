@@ -7,6 +7,7 @@ struct Object {
 	int cost = 0;
 	int weight = 0;
 	double quality = 0.0;
+	float used_scale = 0.0;
 	bool used = false;
 	short use_condition = -1;
 	Object(int obj_cost, int obj_weight, int obj_id) :

@@ -21,6 +21,8 @@ condition_variable cv;
 bool NewComp = false;
 bool FinishThread = false;
 
+int ptas_cmp_counter = 0;
+
 template<class T>
 pair<T, T> get_cost_and_weight(vector<bool>& res, vector<Object>& objs){
     T tmpcost = 0;
@@ -62,17 +64,19 @@ int ComputeCost(vector<int> ids, vector<Object>& objects, int W, int& buf_w, vec
 	buf_w = current_W;
 	buf_ids = ids;
 
+	ptas_cmp_counter++;
 	if (current_W > W) {
 		buf_w = 0;
 		buf_ids = {};
 		return 0;
 	}
 	for (int i = 0; i < objects.size(); i++) {
-
+		ptas_cmp_counter++;
 		if (objects[i].used) continue;
 		int new_W = current_W + objects[i].weight;
 		int new_C = current_C + objects[i].cost;
 		objects[i].used = true;
+		ptas_cmp_counter++;
 		if (new_W > W) {
 			return current_C;
 		}
@@ -132,7 +136,7 @@ int ComputeCBest(vector<Object>& objects, int W, int k, int& buf_w, vector<int>&
 	while (true) {
 		int C_new = ComputeCost(ids, objects, W, ccbbuf_w, ccbbuf_ids);
 
-		C_best = C_new > C_best ? C_new : C_best;
+		ptas_cmp_counter++;
 		if (C_new > C_best) {
 			C_best = C_new;
 			buf_w = ccbbuf_w;
@@ -155,6 +159,7 @@ int ptas(vector<Object>& objects, int W, int k) {
 	
 	for (int i = 0; i <= k; i++) {
 		int C_new = ComputeCBest(objects, W, i, buf_w, buf_ids);
+		ptas_cmp_counter++;
 		if (C_new > C_best) {
 			C_best = C_new;
 			ptas_ids = buf_ids;
@@ -266,12 +271,18 @@ void compute_curr(int& start_index, int& finish_index, int& string_index,
 	swap(new_history, history);
 }
 
-vector<int> MPD_taken = {};
+vector<int> MDP_ids = {};
+int MDP_w = 0;
+int MDP_cells_counter = 0;
 
 int MDP2_speedup_nt(vector<Object>& objects, int W) {
 	if (objects.size() == 0) {
 		return 0;
 	}
+
+	MDP_ids = {};
+	MDP_cells_counter = 0;
+	MDP_w = 0;
 
 	sort(objects.begin(), objects.end(), [](const Object& lhs, const Object& rhs) -> bool
 		{
@@ -297,10 +308,14 @@ int MDP2_speedup_nt(vector<Object>& objects, int W) {
 	for (int string_index = 1; string_index <= size; ++string_index) {
 		start_index = max(barrier[string_index], 0);
 		compute_curr(start_index, length, string_index, prev, curr, objects, W, history);
+		MDP_cells_counter += length - start_index;
 		swap(prev, curr);
 	}
 
-	MPD_taken = history[length - 1];
+	MDP_ids = history[length - 1];
+	for (const auto& item : history[length - 1]) {
+		MDP_w += objects[item].weight;
+	}
 	return prev[length - 1];
 }
 
@@ -518,12 +533,14 @@ void MDP2_comp() {
 }
 
 int main() {
+	/*
 	cout << "cost " << ptas(example, 5000, 2) << endl;
 	cout << "weight " << ptas_W << endl;
 	cout << "Ids:" << endl;
 	for (const auto& item : ptas_ids) {
 		cout << item << " ";
 	}
+
 	cout << endl;
 	cout << endl;
 	cout << endl;
@@ -531,13 +548,13 @@ int main() {
 	cout << "cost " << MDP2_speedup_nt(example, 10) << endl;
 	cout << "ids:" << endl;
 	int wmpd = 0;
-	for (const auto& item : MPD_taken) {
+	for (const auto& item : MDP_ids) {
 		cout << item << " ";
-		wmpd += example[item].weight;
 	}
 	cout << endl;
-	cout << "weight " << wmpd << endl;
-	return 0;
+	cout << "weight " << MDP_w << endl;
+	cout << MDP_cells_counter << endl;
+	return 0;*/
 
     string file_template="../data/";
     std::chrono::steady_clock::time_point pr_StartTime;
@@ -596,6 +613,41 @@ int main() {
                   <<  global_counter  / 10 <<"\n"
                   << std::endl;
         // TO DO INSERT ALGOS HERE
+
+
+		cout << "PTAS answer: \n";
+		int ptas_cost = ptas(objects, capacity, 3);
+		for (auto n : ptas_ids)
+			cout << n << " ";
+		cout << ", total cost = " << ptas_cost << " total weight " << ptas_W << endl;
+		pr_StartTime = std::chrono::steady_clock::now();
+		global_counter = 0;
+		for (size_t i = 0; i < 10; ++i)
+			ptas(objects, capacity, 3);
+		pr_EndTime = std::chrono::steady_clock::now();
+		std::cout << " total time is = "
+			<< std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+			<< " number of cmp = "
+			<< ptas_cmp_counter << "\n"
+			<< std::endl;
+
+
+		cout << "MPD answer: \n";
+		int MDP_cost = MDP2_speedup_nt(objects, capacity);
+		for (auto n : MDP_ids)
+			cout << n << " ";
+		cout << ", total cost = " << MDP_cost << " total weight " << MDP_w << endl;
+		pr_StartTime = std::chrono::steady_clock::now();
+		global_counter = 0;
+		for (size_t i = 0; i < 10; ++i)
+			MDP2_speedup_nt(objects, capacity);
+		pr_EndTime = std::chrono::steady_clock::now();
+		std::cout << " total time is = "
+			<< std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+			<< " number of computed cells = "
+			<< MDP_cells_counter << "\n"
+			<< std::endl;
+
         objects.clear();
     }
 

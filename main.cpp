@@ -375,9 +375,9 @@ vector<bool> twoApporxAlgorithm(vector<Object>& objects, int capacity){
 double relaxedGreedyAlgorithm(vector<Object>& objects, double capacity){
     double tmpcost = 0;
     for(auto& obj : objects) {
-        global_counter++;
+     //   global_counter++;
         if(obj.use_condition == 1) {
-            global_counter++;
+         //   global_counter++;
             if (capacity - obj.weight >= 0) {
                 tmpcost += obj.cost;
                 capacity -= obj.weight;
@@ -388,13 +388,13 @@ double relaxedGreedyAlgorithm(vector<Object>& objects, double capacity){
     }
     for(size_t i = 0; i<objects.size(); ++i) {
         if (objects[i].use_condition==-1) {
-            global_counter++;
+       //     global_counter++;
             if (capacity - objects[i].weight >= 0) {
                 capacity -= objects[i].weight;
                 objects[i].used_scale = 1;
                 tmpcost += objects[i].cost;
             } else if(capacity>=0) {
-                global_counter++;
+          //      global_counter++;
                 float a = (float) capacity / (float) objects[i].weight;
                 capacity -= a * (float)objects[i].weight;
                 objects[i].used_scale = a;
@@ -407,12 +407,12 @@ double relaxedGreedyAlgorithm(vector<Object>& objects, double capacity){
 
 
 void branchAndBound(vector<Object> objects, int capacity, double& totalcost, vector<float>& totalvec) {
+    global_counter++;
     auto tmpobjects = objects;
     double tmpcost = relaxedGreedyAlgorithm(tmpobjects, capacity);
-    global_counter++;
     if (tmpcost > totalcost) {
         for (size_t i = 0; i < objects.size(); ++i) {
-            global_counter++;
+          //  global_counter++;
             if (tmpobjects[i].used_scale < 1 && tmpobjects[i].used_scale > 0) {
                 objects[i].use_condition = 1;
                 branchAndBound(objects, capacity, totalcost, totalvec);
@@ -422,10 +422,10 @@ void branchAndBound(vector<Object> objects, int capacity, double& totalcost, vec
             }
         }
         if (tmpcost > totalcost) {
-            global_counter++;
+          //  global_counter++;
             for (auto item : tmpobjects)
                 if (item.used_scale){
-                    global_counter++;
+          //          global_counter++;
                     totalvec[item.id] = 1;
                 }
                 else totalvec[item.id] = 0;
@@ -433,7 +433,6 @@ void branchAndBound(vector<Object> objects, int capacity, double& totalcost, vec
         }
     }
 }
-
 
 vector<float> BBM(vector<Object> objects, int capacity){
     vector<float> totalvec(objects.size(), 0);
@@ -527,8 +526,8 @@ int main() {
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "
                   << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
-                  << " number of comparisons (used estimated number of comparisons in quick sort (nlogn)) = "
-                  << (objects.size()*log(objects.size()) + global_counter)  / 10 <<"\n"
+                  << " number of branches = "
+                  <<  global_counter  / 10 <<"\n"
                   << std::endl;
         // TO DO INSERT ALGOS HERE
         objects.clear();

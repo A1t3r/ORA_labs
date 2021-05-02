@@ -47,7 +47,10 @@ pair<T, T> get_cost_and_weight(vector<float>& res, vector<Object>& objs){
     return{tmpcost, tmpweight};
 }
 
-int ComputeCost(vector<int> ids, vector<Object>& objects, int W) {
+int ptas_W = 0;
+vector<int> ptas_ids = {};
+
+int ComputeCost(vector<int> ids, vector<Object>& objects, int W, int& buf_w, vector<int>& buf_ids) {
 	int current_W = 0;
 	int current_C = 0;
 	for (int& id : ids) {
@@ -55,7 +58,13 @@ int ComputeCost(vector<int> ids, vector<Object>& objects, int W) {
 		current_C += objects[id].cost;
 		objects[id].used = true;
 	}
+
+	buf_w = current_W;
+	buf_ids = ids;
+
 	if (current_W > W) {
+		buf_w = 0;
+		buf_ids = {};
 		return 0;
 	}
 	for (int i = 0; i < objects.size(); i++) {
@@ -63,16 +72,25 @@ int ComputeCost(vector<int> ids, vector<Object>& objects, int W) {
 		if (objects[i].used) continue;
 		int new_W = current_W + objects[i].weight;
 		int new_C = current_C + objects[i].cost;
+		objects[i].used = true;
 		if (new_W > W) {
 			return current_C;
 		}
 		else {
 			current_W = new_W;
 			current_C = new_C;
+
+			buf_w = new_W;
 		}
 	}
-	for (auto& object : objects) {
-		object.used = false;
+
+	buf_ids = {};
+
+	for (int i = 0; i < objects.size(); i++) {
+		if (objects[i].used) {
+			objects[i].used = false;
+			buf_ids.push_back(i);
+		}
 	}
 
 	return current_C;
@@ -95,7 +113,7 @@ bool RecountIds(vector<int>& ids, int obj_number) {
 	return !NextSet(ids, obj_number - 1, ids.size());
 }
 
-int ComputeCBest(vector<Object>& objects, int W, int k) {
+int ComputeCBest(vector<Object>& objects, int W, int k, int& buf_w, vector<int>& buf_ids) {
 	vector<int> ids(k);
 	int value = 0;
 	for (int& id : ids) {
@@ -103,14 +121,23 @@ int ComputeCBest(vector<Object>& objects, int W, int k) {
 		value++;
 	}
 
+	int ccbbuf_w = 0;
+	vector<int> ccbbuf_ids = {};
+
 	int C_best = 0;
 	if (k == 0) {
-		return ComputeCost(ids, objects, W);
+		return ComputeCost(ids, objects, W, buf_w, buf_ids);
 	}
-	
+
 	while (true) {
-		int C_new = ComputeCost(ids, objects, W);
+		int C_new = ComputeCost(ids, objects, W, ccbbuf_w, ccbbuf_ids);
+
 		C_best = C_new > C_best ? C_new : C_best;
+		if (C_new > C_best) {
+			C_best = C_new;
+			buf_w = ccbbuf_w;
+			buf_ids = ccbbuf_ids;
+		}
 
 		int obj_number = objects.size();
 
@@ -121,10 +148,18 @@ int ComputeCBest(vector<Object>& objects, int W, int k) {
 
 int ptas(vector<Object>& objects, int W, int k) {
 	int C_best = 0;
+	int buf_w = 0;
+	vector<int> buf_ids = {};
+	ptas_ids = {};
+	ptas_W = 0;
 	
 	for (int i = 0; i <= k; i++) {
-		int C_new = ComputeCBest(objects, W, i);
-		C_best = C_new > C_best ? C_new : C_best;
+		int C_new = ComputeCBest(objects, W, i, buf_w, buf_ids);
+		if (C_new > C_best) {
+			C_best = C_new;
+			ptas_ids = buf_ids;
+			ptas_W = buf_w;
+		}
 	}
 	return C_best;
 }
@@ -201,7 +236,10 @@ void compute_curr_thread(int& start_index, int& finish_index, int& string_index,
 }
 
 void compute_curr(int& start_index, int& finish_index, int& string_index,
-	vector<int>& prev, vector<int>& curr, const vector<Object>& objects, int& W) {
+	vector<int>& prev, vector<int>& curr, const vector<Object>& objects, int& W,
+	vector<vector<int>>& history) {
+
+	vector<vector<int>> new_history(history.size());
 
 	for (int item_index = start_index; item_index < finish_index; ++item_index) {
 		int obj_W = objects[string_index - 1].weight;
@@ -211,18 +249,30 @@ void compute_curr(int& start_index, int& finish_index, int& string_index,
 				prev_bp = objects[string_index - 1].cost + prev[item_index - obj_W];
 			}
 
-			curr[item_index] = max(
-				prev[item_index],
-				prev_bp
-			);
+			if (prev[item_index] >= prev_bp) {
+				curr[item_index] = prev[item_index];
+				new_history[item_index] = history[item_index];
+			}
+			else {
+				curr[item_index] = prev_bp;
+				new_history[item_index] = history[item_index - obj_W];
+				new_history[item_index].push_back(string_index - 1);
+			}
 		}
 		else {
 			break;
 		}
 	}
+	swap(new_history, history);
 }
 
+vector<int> MPD_taken = {};
+
 int MDP2_speedup_nt(vector<Object>& objects, int W) {
+	if (objects.size() == 0) {
+		return 0;
+	}
+
 	sort(objects.begin(), objects.end(), [](const Object& lhs, const Object& rhs) -> bool
 		{
 			return lhs.weight > rhs.weight;
@@ -242,21 +292,15 @@ int MDP2_speedup_nt(vector<Object>& objects, int W) {
 		barrier[i] = barrier[i + 1] - objects[i].weight;
 	}
 
+	vector<vector<int>> history(length);
+
 	for (int string_index = 1; string_index <= size; ++string_index) {
 		start_index = max(barrier[string_index], 0);
-		if (false) {
-			mid = (start_index + length) / 2;
-			thread left_work(compute_curr, ref(start_index), ref(mid), ref(string_index),
-				ref(prev), ref(curr), ref(objects), ref(W));
-			compute_curr(mid, length, string_index, prev, curr, objects, W);
-			left_work.join();
-		}
-		else {
-			//cout << start_index << ":" << length << endl;
-			compute_curr(start_index, length, string_index, prev, curr, objects, W);
-		}
+		compute_curr(start_index, length, string_index, prev, curr, objects, W, history);
 		swap(prev, curr);
 	}
+
+	MPD_taken = history[length - 1];
 	return prev[length - 1];
 }
 
@@ -281,6 +325,8 @@ int MDP2_speedup(vector<Object>& objects, int W) {
 		barrier[i] = barrier[i + 1] - objects[i].weight;
 	}
 
+	vector<vector<int>> history = {};
+
 	thread left_work(compute_curr_thread, ref(start_index), ref(mid), ref(obj_id),
 		ref(prev), ref(curr), ref(objects), ref(W));
 
@@ -296,7 +342,7 @@ int MDP2_speedup(vector<Object>& objects, int W) {
 				cv.notify_one();
 			}
 			//cout << "main " << mid << ":" << length << endl;
-			compute_curr(mid, length, string_index, prev, curr, objects, W);
+			compute_curr(mid, length, string_index, prev, curr, objects, W, history);
 
 			std::unique_lock<std::mutex> ul(m);
 
@@ -306,7 +352,7 @@ int MDP2_speedup(vector<Object>& objects, int W) {
 		}
 		else {
 			//cout << start_index << ":" << length << endl;
-			compute_curr(start_index, length, string_index, prev, curr, objects, W);
+			compute_curr(start_index, length, string_index, prev, curr, objects, W, history);
 		}
 		swap(prev, curr);
 	}
@@ -468,11 +514,31 @@ void MDP2_comp() {
 	auto ends = std::chrono::steady_clock::now();
 
 	auto elapseds_ms = std::chrono::duration_cast<std::chrono::milliseconds>(ends - begins);
-	std::cout << "Sort-barrier + 2-proc speedup (only for really large cases): " << cs << "$. The time: " << elapseds_ms.count() << " ms\n";
+	std::cout << "Sort-barrier + 2-proc speedup: " << cs << "$. The time: " << elapseds_ms.count() << " ms\n";
 }
 
 int main() {
-	//MDP2_comp();
+	cout << "cost " << ptas(example, 5000, 2) << endl;
+	cout << "weight " << ptas_W << endl;
+	cout << "Ids:" << endl;
+	for (const auto& item : ptas_ids) {
+		cout << item << " ";
+	}
+	cout << endl;
+	cout << endl;
+	cout << endl;
+
+	cout << "cost " << MDP2_speedup_nt(example, 10) << endl;
+	cout << "ids:" << endl;
+	int wmpd = 0;
+	for (const auto& item : MPD_taken) {
+		cout << item << " ";
+		wmpd += example[item].weight;
+	}
+	cout << endl;
+	cout << "weight " << wmpd << endl;
+	return 0;
+
     string file_template="../data/";
     std::chrono::steady_clock::time_point pr_StartTime;
     std::chrono::steady_clock::time_point pr_EndTime;

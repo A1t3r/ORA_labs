@@ -63,9 +63,13 @@ int ComputeCost(vector<int> ids, vector<Object>& objects, int W, int& buf_w, vec
 
 	buf_w = current_W;
 	buf_ids = {};
-
 	ptas_cmp_counter++;
 	if (current_W > W) {
+		for (int i = 0; i < objects.size(); i++) {
+			if (objects[i].used) {
+				objects[i].used = false;
+			}
+		}
 		buf_w = 0;
 		buf_ids = {};
 		return 0;
@@ -158,6 +162,7 @@ int ComputeCBest(vector<Object>& objects, int W, int k, int& buf_w, vector<int>&
 }
 
 int ptas(vector<Object>& objects, int W, int k) {
+	ptas_cmp_counter = 0;
 	int C_best = 0;
 	int buf_w = 0;
 	vector<int> buf_ids = {};
@@ -166,6 +171,7 @@ int ptas(vector<Object>& objects, int W, int k) {
 	
 	for (int i = 0; i <= k; i++) {
 		int C_new = ComputeCBest(objects, W, i, buf_w, buf_ids);
+		
 		ptas_cmp_counter++;
 		if (C_new > C_best) {
 			C_best = C_new;
@@ -624,6 +630,7 @@ int main() {
 
 		cout << "PTAS answer: \n";
 		int ptas_cost = ptas(objects, capacity, 3);
+		int ptas_cmp = ptas_cmp_counter;
 		int last = 0;
 		for (auto n : ptas_ids) {
 			for (int i = last; i < n; i++)
@@ -642,12 +649,13 @@ int main() {
 		std::cout << " total time is = "
 			<< std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
 			<< " number of cmp = "
-			<< ptas_cmp_counter << "\n"
+			<< ptas_cmp << "\n"
 			<< std::endl;
 
 
 		cout << "MPD answer: \n";
 		int MDP_cost = MDP2_speedup_nt(objects, capacity);
+		last = 0;
 		for (auto n : MDP_ids) {
 			for (int i = last; i < n; i++)
 				cout << "0 ";

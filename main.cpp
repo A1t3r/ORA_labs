@@ -62,7 +62,7 @@ int ComputeCost(vector<int> ids, vector<Object>& objects, int W, int& buf_w, vec
 	}
 
 	buf_w = current_W;
-	buf_ids = ids;
+	buf_ids = {};
 
 	ptas_cmp_counter++;
 	if (current_W > W) {
@@ -78,6 +78,13 @@ int ComputeCost(vector<int> ids, vector<Object>& objects, int W, int& buf_w, vec
 		objects[i].used = true;
 		ptas_cmp_counter++;
 		if (new_W > W) {
+			objects[i].used = false;
+			for (int i = 0; i < objects.size(); i++) {
+				if (objects[i].used) {
+					objects[i].used = false;
+					buf_ids.push_back(i);
+				}
+			}
 			return current_C;
 		}
 		else {
@@ -135,7 +142,7 @@ int ComputeCBest(vector<Object>& objects, int W, int k, int& buf_w, vector<int>&
 
 	while (true) {
 		int C_new = ComputeCost(ids, objects, W, ccbbuf_w, ccbbuf_ids);
-
+		
 		ptas_cmp_counter++;
 		if (C_new > C_best) {
 			C_best = C_new;
@@ -617,8 +624,15 @@ int main() {
 
 		cout << "PTAS answer: \n";
 		int ptas_cost = ptas(objects, capacity, 3);
-		for (auto n : ptas_ids)
-			cout << n << " ";
+		int last = 0;
+		for (auto n : ptas_ids) {
+			for (int i = last; i < n; i++)
+				cout << "0 ";
+			cout << "1 ";
+			last = n + 1;
+		}
+		for (int i = last; i < objects.size(); i++)
+			cout << "0 ";
 		cout << ", total cost = " << ptas_cost << " total weight " << ptas_W << endl;
 		pr_StartTime = std::chrono::steady_clock::now();
 		global_counter = 0;
@@ -634,8 +648,14 @@ int main() {
 
 		cout << "MPD answer: \n";
 		int MDP_cost = MDP2_speedup_nt(objects, capacity);
-		for (auto n : MDP_ids)
-			cout << n << " ";
+		for (auto n : MDP_ids) {
+			for (int i = last; i < n; i++)
+				cout << "0 ";
+			cout << "1 ";
+			last = n + 1;
+		}
+		for (int i = last; i < objects.size(); i++)
+			cout << "0 ";
 		cout << ", total cost = " << MDP_cost << " total weight " << MDP_w << endl;
 		pr_StartTime = std::chrono::steady_clock::now();
 		global_counter = 0;

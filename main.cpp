@@ -271,7 +271,8 @@ void partially_mapped_crossover(vector<int>& chrm1, vector<int>& chrm2){
     }
 }
 
-double salesman_problem_genalg(vector<pair<double, double>>& map, int population_size, int it_population_size, size_t iterations){
+double salesman_problem_genalg(vector<pair<double, double>>& map, int population_size,
+                               int it_population_size, size_t iterations, bool show_res = false){
     vector<vector<int>> new_batch = make_start_batch(population_size, map.size(), 0);
     //vector<vector<int>> new_batch;
     for(size_t it = 0; it<iterations; ++it){
@@ -300,14 +301,17 @@ double salesman_problem_genalg(vector<pair<double, double>>& map, int population
             vecres = sample;
         }
     }
-    for(auto item : vecres) {
-        cout << item << " ";
+    if(show_res) {
+        for (auto item : vecres) {
+            cout << item << " ";
+        }
     }
     cout<<endl;
     return res;
 }
 
-double salesman_problem_genalg(vector<vector<double>>& map, int population_size, int it_population_size, size_t iterations){
+double salesman_problem_genalg(vector<vector<double>>& map, int population_size, int it_population_size,
+                               size_t iterations, bool show_res = false){
     vector<vector<int>> new_batch = make_start_batch(population_size, map.size(), 0);
     for(size_t it = 0; it<iterations; ++it){
         new_batch=TS_selection(new_batch, map, it_population_size);
@@ -335,30 +339,16 @@ double salesman_problem_genalg(vector<vector<double>>& map, int population_size,
             vecres = sample;
         }
     }
-    for(auto item : vecres) {
-        cout << item << " ";
+    if(show_res) {
+        for (auto item : vecres) {
+            cout << item << " ";
+        }
     }
     cout<<endl;
     return res;
 }
 
 int main() {
- //   vector<pair<int, int>> data= {{0, 0}, {0, 5}, {2, 3}, {5, 5}, {8, 3}, {6, 0}};
-//    vector<vector<double>> data= {{0, 34, 36, 37, 31, 33, 35},
- //                              {34, 0, 29, 21, 22, 25, 24},
-   //                            {36, 29, 0, 17, 12, 18, 17},
-  //                             {37, 23, 17, 0, 32, 30, 29},
-  //                             {31, 22, 12, 32, 0, 26, 24},
-  //                             {33, 25, 18, 30, 26, 0, 19},
- //                              {35, 24, 17, 29, 24, 19, 0}};
- //   auto check = make_start_batch(10, 5, 0);
-  //  auto check2 = get_len({0,0},{4,3});
-//    auto check3 = TS_selection(check, data, 7);
-//    vector<int> c1 = {8,2,3,7,1,6,0,5,4,8};
-//    vector<int> c2 = {8,3,1,4,0,5,7,2,6,8};
-//    partially_mapped_crossover(c1, c2);
- //   cout<<salesman_problem_genalg(data, 7, 7, 50)<<endl;
-//    return 0;
     std::chrono::steady_clock::time_point pr_StartTime;
     std::chrono::steady_clock::time_point pr_EndTime;
     string file_template = "../data/";
@@ -387,13 +377,17 @@ int main() {
             tmp_coord.second = stod(num_s);
             map.push_back(tmp_coord);
         }
+        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70)<<endl;
-        pr_EndTime = std::chrono::steady_clock::now();
-        std::cout << " total time is = "
-                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count();
-        cout<<endl;
-    }
+        for(size_t n = 0; n < 10; ++n) {
+            salesman_problem_genalg(map, map.size(), map.size() / 2, 70);
+        }
+            pr_EndTime = std::chrono::steady_clock::now();
+            std::cout << " total time is = "
+                      << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10.;
+            cout << endl;
+        }
+
 
     vector<string> file_names2 = {"bays29.tsp"};
     for (auto& file_name : file_names2){
@@ -416,12 +410,15 @@ int main() {
             map.push_back(tmp_row);
             tmp_row.clear();
         }
+        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70)<<endl;
+        for(size_t n = 0; n < 10; ++n) {
+            salesman_problem_genalg(map, map.size(), map.size() / 2, 70);
+        }
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "
-                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count();
-        cout<<endl;
+                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10.;
+        cout << endl;
     }
 
     vector<string> file_names3 = {"gr17.tsp"};
@@ -456,12 +453,15 @@ int main() {
                 map[i][j] = map[j][i];
             }
         }
+        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70)<<endl;
+        for(size_t n = 0; n < 10; ++n) {
+            salesman_problem_genalg(map, map.size(), map.size() / 2, 70);
+        }
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "
-                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count();
-        cout<<endl;
+                  << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10.;
+        cout << endl;
     }
 
 	//knapsack_genalg(example, 10);

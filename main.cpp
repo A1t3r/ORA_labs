@@ -143,19 +143,19 @@ KnapsackResult knapsack_genalg(const vector<Object>& objects, int W, int iterati
 
 static vector<vector<int>> make_start_batch(int population_size, int number_of_ver, int start_point){
     srand(42);
-    vector<int> range(number_of_ver-1);
-    for(int i = 1; i < number_of_ver; ++i) {
-        range[i-1] = i;
+    vector<int> range(number_of_ver);
+    for(int i = 0; i < number_of_ver; ++i) {
+        range[i] = i;
     }
     vector<vector<int>> total(population_size);
     for(size_t j = 0; j < population_size; ++j) {
-        total[j].push_back(0);
-        for(int i = 0; i < number_of_ver - 1; ++i) {
-            auto el = rand() % (number_of_ver - i -1);
+        // total[j].push_back(0);
+        for(int i = 0; i < number_of_ver; ++i) {
+            auto el = rand() % (number_of_ver - i);
             total[j].push_back(range[el]);
-            swap(range[el], range[number_of_ver - i - 2]);
+            swap(range[el], range[number_of_ver - i - 1]);
         }
-        total[j].push_back(0);
+        //  total[j].push_back(0);
     }
     return total;
 };
@@ -170,6 +170,7 @@ double TS_fitness_function_coord(vector<int>& path, vector<pair<double, double>>
     for(size_t i = 0; i < path.size()-1; ++i){
         res += get_len(map[path[i]], map[path[i+1]]);
     }
+    res+= get_len(map[path[path.size()-1]], map[path[0]]);
     return res;
 }
 
@@ -178,13 +179,14 @@ double TS_fitness_function_coord(vector<int>& path, vector<vector<double>>& map)
     for(size_t i = 0; i < path.size()-1; ++i){
         res += map[path[i]][path[i+1]];
     }
+    res+=map[path[path.size()-1]][path[0]];
     return res;
 }
 
 static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<vector<double>>& map, int new_population_size){
     vector<vector<int>> new_batch;
     vector<double> fit_funcs(batch.size());
-    vector<pair<double, double>> range_list;
+    vector<pair<int, double>> range_list;
     if(new_population_size > batch.size())
         throw- 1;
     // calculate fitness
@@ -195,7 +197,7 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<vecto
         //     local_max = (local_max > fit_funcs[i]) ? fit_funcs[i] : local_max;
     }
     // sort range list
-    sort(range_list.begin(), range_list.end(), [](pair<double, double>& a, pair<double, double>& b) {
+    sort(range_list.begin(), range_list.end(), [](pair<int, double>& a, pair<int, double>& b) {
         return a.second < b.second;
     });
 
@@ -221,18 +223,18 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<vecto
 static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<pair<double, double>>& map, int new_population_size){
     vector<vector<int>> new_batch;
     vector<double> fit_funcs(batch.size());
-    vector<pair<double, double>> range_list;
+    vector<pair<int, double>> range_list;
     if(new_population_size > batch.size())
         throw- 1;
     // calculate fitness
     for(size_t i = 0; i < batch.size(); ++i){
         fit_funcs[i] = TS_fitness_function_coord(batch[i], map);
         range_list.push_back({i, fit_funcs[i]});
-    //    sum+=fit_funcs[i];
-   //     local_max = (local_max > fit_funcs[i]) ? fit_funcs[i] : local_max;
+        //    sum+=fit_funcs[i];
+        //     local_max = (local_max > fit_funcs[i]) ? fit_funcs[i] : local_max;
     }
     // sort range list
-    sort(range_list.begin(), range_list.end(), [](pair<double, double>& a, pair<double, double>& b) {
+    sort(range_list.begin(), range_list.end(), [](pair<int, double>& a, pair<int, double>& b) {
         return a.second < b.second;
     });
 
@@ -257,9 +259,9 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<pair<
 
 static void swap_mutation(vector<int>& c){
     if(c.size()==1) return;
-    auto ch1 = (rand() % (c.size()-2)) +1;
-    auto ch2 = (rand() % (c.size()-2)) +1;
-    if(ch1 == ch2 && ch2!=c.size()-2) ch2 = ch1 + 1;
+    auto ch1 = rand() % (c.size());
+    auto ch2 = rand() % (c.size());
+    if(ch1 == ch2 && ch2!=c.size()-1) ch2 = ch1 + 1;
     else if(ch1 == ch2) ch2 = ch1 - 1;
     swap(c[ch1], c[ch2]);
 }
@@ -267,9 +269,9 @@ static void swap_mutation(vector<int>& c){
 void partially_mapped_crossover(vector<int>& chrm1, vector<int>& chrm2){
     vector<int> map(chrm1.size(), -1);
     vector<int> map_reverse(chrm1.size(), -1);
-    size_t place1 = rand() % (chrm1.size()-2);
-    size_t place2 = rand() % (chrm1.size()-2);
-    place1++, place2++;
+    size_t place1 = rand() % (chrm1.size());
+    size_t place2 = rand() % (chrm1.size());
+    // place1++, place2++;
     if(place1 > place2){
         auto tmp = place1;
         place1 = place2;
@@ -293,7 +295,7 @@ void partially_mapped_crossover(vector<int>& chrm1, vector<int>& chrm2){
             if (map[chrm2[i]] != -1) {
                 auto tmp = map[chrm2[i]];
                 while (map[tmp] != -1)
-                        tmp = map[tmp];
+                    tmp = map[tmp];
                 chrm2[i] = tmp;
             }
         }
@@ -308,7 +310,7 @@ double salesman_problem_genalg(vector<pair<double, double>>& map, int population
         new_batch=TS_selection(new_batch, map, it_population_size);
         for(size_t i = 0; i<population_size/2; ++i){
             auto cros_ch = rand() % 100;
-            if(cros_ch < 85) {
+            if(cros_ch < 90) {
                 auto ch1 = rand() % new_batch.size();
                 auto ch2 = rand() % new_batch.size();
                 if (ch1 == ch2 && ch2 != new_batch.size() - 1) ch2 = ch1 + 1;
@@ -317,7 +319,7 @@ double salesman_problem_genalg(vector<pair<double, double>>& map, int population
             }
         }
         for(size_t i = 0; i<new_batch.size(); ++i)
-            if(3 >= (rand() % 100)){
+            if(5 >= (rand() % 100)){
                 swap_mutation(new_batch[i]);
             }
     }
@@ -331,10 +333,12 @@ double salesman_problem_genalg(vector<pair<double, double>>& map, int population
         }
     }
     if(show_res) {
+        vecres.push_back(vecres[0]);
         for (auto item : vecres) {
             cout << item << " ";
         }
     }
+    // res+= get_len(map[vecres[vecres.size()-1]], map[vecres[0]]);
     cout<<endl;
     return res;
 }
@@ -346,7 +350,7 @@ double salesman_problem_genalg(vector<vector<double>>& map, int population_size,
         new_batch=TS_selection(new_batch, map, it_population_size);
         for(size_t i = 0; i<population_size/2; ++i){
             auto cros_ch = rand() % 100;
-            if(cros_ch < 85) {
+            if(cros_ch < 90) {
                 auto ch1 = rand() % new_batch.size();
                 auto ch2 = rand() % new_batch.size();
                 if (ch1 == ch2 && ch2 != new_batch.size() - 1) ch2 = ch1 + 1;
@@ -355,7 +359,7 @@ double salesman_problem_genalg(vector<vector<double>>& map, int population_size,
             }
         }
         for(size_t i = 0; i<new_batch.size(); ++i)
-            if(3 >= (rand() % 100)){
+            if(5 >= (rand() % 100)){
                 swap_mutation(new_batch[i]);
             }
     }
@@ -369,10 +373,12 @@ double salesman_problem_genalg(vector<vector<double>>& map, int population_size,
         }
     }
     if(show_res) {
+        vecres.push_back(vecres[0]);
         for (auto item : vecres) {
             cout << item << " ";
         }
     }
+    //   res+=map[vecres[vecres.size()-1]][vecres[0]];
     cout<<endl;
     return res;
 }
@@ -390,7 +396,7 @@ int knapack_main() {
 
     // alg opts
     int iterations = 30;
-    int population_size = 50; 
+    int population_size = 50;
     int new_population_size = 20;
     float mutation_chance = 0.05;
 
@@ -408,10 +414,10 @@ int knapack_main() {
         }
 
         cout << "Answer: \n";
-        KnapsackResult knapsack_result = knapsack_genalg(objects, capacity, 
+        KnapsackResult knapsack_result = knapsack_genalg(objects, capacity,
             iterations, population_size, new_population_size, mutation_chance);
-        
-        cout << knapsack_result.chromosome << ", total cost = " << knapsack_result.cost 
+
+        cout << knapsack_result.chromosome << ", total cost = " << knapsack_result.cost
             << " total weight " << knapsack_result.weight << endl;
 
         pr_StartTime = std::chrono::steady_clock::now();
@@ -460,10 +466,10 @@ int main() {
             tmp_coord.second = stod(num_s);
             map.push_back(tmp_coord);
         }
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70, true)<<endl;
+        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 77, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
         for(size_t n = 0; n < 10; ++n) {
-            salesman_problem_genalg(map, map.size(), map.size() / 2, 70);
+            salesman_problem_genalg(map, map.size(), map.size() / 2, 77);
         }
             pr_EndTime = std::chrono::steady_clock::now();
             std::cout << " total time is = "
@@ -493,10 +499,10 @@ int main() {
             map.push_back(tmp_row);
             tmp_row.clear();
         }
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70, true)<<endl;
+        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 77, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
         for(size_t n = 0; n < 10; ++n) {
-            salesman_problem_genalg(map, map.size(), map.size() / 2, 70);
+            salesman_problem_genalg(map, map.size(), map.size() / 2, 77);
         }
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "
@@ -536,10 +542,10 @@ int main() {
                 map[i][j] = map[j][i];
             }
         }
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 70, true)<<endl;
+        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 77, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
         for(size_t n = 0; n < 10; ++n) {
-            salesman_problem_genalg(map, map.size(), map.size() / 2, 70);
+            salesman_problem_genalg(map, map.size(), map.size() / 2, 77);
         }
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "

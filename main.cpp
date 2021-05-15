@@ -431,7 +431,6 @@ int knapack_main() {
 
 int main() {
     knapack_main();
-    return 0;
 
     std::chrono::steady_clock::time_point pr_StartTime;
     std::chrono::steady_clock::time_point pr_EndTime;

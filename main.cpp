@@ -8,15 +8,17 @@
 
 using namespace std;
 
-void show_population(vector<BinaryChromosome> population, string message="") {
-	return;
+void show_population(vector<BinaryChromosome>& population, string message="") {
 	cout << message << endl;
 	for (auto& item : population) {
 		cout << item << endl;
 	}
 }
 
-int knapsack_fitness_function(BinaryChromosome& bc, vector<Object> objs, int W) {
+int knapsack_fitness_function(BinaryChromosome& bc, vector<Object> objs, int W, 
+    int& current_weight) {
+
+    current_weight = 0;
 	int value = 0;
 	int weight = 0;
 	for (int i = 0; i < objs.size(); ++i) {
@@ -27,14 +29,24 @@ int knapsack_fitness_function(BinaryChromosome& bc, vector<Object> objs, int W) 
 	}
 	if (weight > W)
 		return 0;
+    current_weight = weight;
 	return value;
 }
 
 void RouletteWheelSelection(vector<BinaryChromosome>& population, 
 	vector<int>& ffvalues, int ffvalues_sum, int new_population_size) {
+
 	vector<BinaryChromosome> new_population = {};
 	new_population.reserve(population.size());
 	int chromosome_index = 0;
+
+    if (ffvalues_sum == 0) {
+        for (int i = 0; i < new_population_size; i++) {
+            new_population.push_back(population[i]);
+        }
+        swap(new_population, population);
+        return;
+    }
 
 	for (int i = 0; i < new_population_size; i++) {
 		int rand_int = rand() % ffvalues_sum + 1;
@@ -55,11 +67,24 @@ void RouletteWheelSelection(vector<BinaryChromosome>& population,
 	return;
 }
 
-vector<bool>& knapsack_genalg(const vector<Object>& objects, int W, int iterations=100,
+struct KnapsackResult {
+    BinaryChromosome chromosome;
+    int cost;
+    int weight;
+    KnapsackResult(BinaryChromosome wchromosome, int wcost, int wweight) {
+        chromosome = wchromosome;
+        cost = wcost;
+        weight = wweight;
+    }
+};
+
+KnapsackResult knapsack_genalg(const vector<Object>& objects, int W, int iterations=100,
 	int population_size=10, int new_population_size = 6, float mutation_chance=0.01) {
-	vector<bool> ret = {};
+    BinaryChromosome bc(0);
+    KnapsackResult ret(bc, 0, 0);
 
 	int best_cost = -1;
+    int weight = -2;
 	BinaryChromosome best_chromosome;
 
 	// checks
@@ -69,7 +94,7 @@ vector<bool>& knapsack_genalg(const vector<Object>& objects, int W, int iteratio
 	// creating population
 	BinaryChromosome::size = objects.size();
 	vector<BinaryChromosome> population(new_population_size);
-	show_population(population, "created");
+	//show_population(population, "created");
 
 	for (int i = 0; i < iterations; ++i) {
 		// crossover
@@ -83,33 +108,37 @@ vector<bool>& knapsack_genalg(const vector<Object>& objects, int W, int iteratio
 			population.push_back(population[second_parent]);
 			population[new_population_size + j * 2].OnePointCrossover(population[new_population_size + j * 2 + 1]);
 		}
-		show_population(population, "crossover");
+		//show_population(population, "crossover");
 
 		// mutation 
 		for (auto& chromosome : population) {
 			chromosome.SimpleMutation(mutation_chance);
 		}
-		show_population(population, "mutation");
+		//show_population(population, "mutation");
 
 		// selection
 		vector<int> costs(population_size);
 		int cost_sum = 0;
 
 		for (int j = 0; j < population_size; ++j) {
-			costs[j] = knapsack_fitness_function(population[j], objects, W);
+            int current_weight;
+			costs[j] = knapsack_fitness_function(population[j], objects, W, current_weight);
 			cost_sum += costs[j];
 
 			if (costs[j] > best_cost) {
 				best_chromosome = population[j];
 				best_cost = costs[j];
+                weight = current_weight;
 			}
 		}
 
 		RouletteWheelSelection(population, costs, cost_sum, new_population_size);
-		show_population(population, "selected");
+		//show_population(population, "selected");
 	}
-	cout << "Chromosome: " << best_chromosome << " with cost " << best_cost << endl;
-	return best_chromosome.GetGenes();
+
+	//cout << "Chromosome: " << best_chromosome << " with cost " << best_cost << endl;
+    KnapsackResult result(best_chromosome, best_cost, weight);
+    return result;
 }
 
 static vector<vector<int>> make_start_batch(int population_size, int number_of_ver, int start_point){
@@ -348,7 +377,62 @@ double salesman_problem_genalg(vector<vector<double>>& map, int population_size,
     return res;
 }
 
+int knapack_main() {
+    string file_template = "../knapsack_data/";
+    std::chrono::steady_clock::time_point pr_StartTime;
+    std::chrono::steady_clock::time_point pr_EndTime;
+    int capacity = 0;
+    int p = 0;
+    int w = 0;
+    vector<Object> objects;
+
+    srand(0);
+
+    // alg opts
+    int iterations = 30;
+    int population_size = 50; 
+    int new_population_size = 20;
+    float mutation_chance = 0.05;
+
+    for (int i = 1; i < 8; ++i) {
+        cout << "Now testing sample number " << i << endl;
+        int id = 0;
+        ifstream file_capacity(file_template + "p0" + std::to_string(i) + "_c.txt");
+        file_capacity >> capacity;
+        ifstream file_p(file_template + "p0" + std::to_string(i) + "_p.txt");
+        ifstream file_w(file_template + "p0" + std::to_string(i) + "_w.txt");
+        while (!file_p.eof()) {
+            file_p >> p, file_w >> w;
+            objects.emplace_back(p, w, id);
+            id++;
+        }
+
+        cout << "Answer: \n";
+        KnapsackResult knapsack_result = knapsack_genalg(objects, capacity, 
+            iterations, population_size, new_population_size, mutation_chance);
+        
+        cout << knapsack_result.chromosome << ", total cost = " << knapsack_result.cost 
+            << " total weight " << knapsack_result.weight << endl;
+
+        pr_StartTime = std::chrono::steady_clock::now();
+        for (size_t i = 0; i < 10; ++i)
+            knapsack_genalg(objects, capacity,
+                iterations, population_size, new_population_size, mutation_chance);
+        pr_EndTime = std::chrono::steady_clock::now();
+
+        std::cout << " total time is = "
+            << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10
+            << std::endl;
+
+        objects.clear();
+    }
+    return 0;
+}
+
 int main() {
+    knapack_main();
+    return 0;
+
     std::chrono::steady_clock::time_point pr_StartTime;
     std::chrono::steady_clock::time_point pr_EndTime;
     string file_template = "../data/";
@@ -464,6 +548,5 @@ int main() {
         cout << endl;
     }
 
-	//knapsack_genalg(example, 10);
 	return 0;
 }

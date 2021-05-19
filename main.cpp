@@ -142,7 +142,6 @@ KnapsackResult knapsack_genalg(const vector<Object>& objects, int W, int iterati
 }
 
 static vector<vector<int>> make_start_batch(int population_size, int number_of_ver, int start_point){
-    srand(42);
     vector<int> range(number_of_ver);
     for(int i = 0; i < number_of_ver; ++i) {
         range[i] = i;
@@ -187,8 +186,8 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<vecto
     vector<vector<int>> new_batch;
     vector<double> fit_funcs(batch.size());
     vector<pair<int, double>> range_list;
-    if(new_population_size > batch.size())
-        throw- 1;
+ //   if(new_population_size > batch.size())
+ //       throw- 1;
     // calculate fitness
     for(size_t i = 0; i < batch.size(); ++i){
         fit_funcs[i] = TS_fitness_function_coord(batch[i], map);
@@ -202,6 +201,7 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<vecto
     });
 
     // number of batches - 4, batch sizes 10%, 20%, 30%, 40%, probability of bathces - 50%, 30%, 15%, 5%
+
 
     for(size_t i = 0; i < new_population_size; ++i){
         int ch = rand() % 100;
@@ -214,9 +214,24 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<vecto
             its = (rand() % ((int)round((double)batch.size() / 10.) * 3)) + ((int)round((double)batch.size() / 5.));
         else
             its = (rand() % ((int)round((double)batch.size() / 5.) * 2)) + ((int)round((double)batch.size() / 10.) * 3 );
-        new_batch.push_back(batch[its]);
+        new_batch.push_back(batch[range_list[its].first]);
     }
 
+    /*
+    for(size_t i = 0; i < new_population_size; ++i){
+        int ch = rand() % 100;
+        size_t its = 0;
+        if(ch<50)
+            its = rand() % (int)round((double)batch.size() / 4.);
+        else if(ch<80)
+            its = (rand() % ((int)round((double)batch.size() / 4.))) + (int)round((double)batch.size() / 4.);
+        else if (ch<95)
+            its = (rand() % ((int)round((double)batch.size() / 4.))) + ((int)round((double)batch.size() / 2.));
+        else
+            its = (rand() % ((int)round((double)batch.size() / 4.)) )+ ((int)round((double)batch.size() / 4.) * 3 );
+        if(its>=batch.size()) its = batch.size()-1;
+        new_batch.push_back(batch[range_list[its].first]);
+    }*/
     return new_batch;
 }
 
@@ -224,8 +239,8 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<pair<
     vector<vector<int>> new_batch;
     vector<double> fit_funcs(batch.size());
     vector<pair<int, double>> range_list;
-    if(new_population_size > batch.size())
-        throw- 1;
+ //   if(new_population_size > batch.size())
+//        throw- 1;
     // calculate fitness
     for(size_t i = 0; i < batch.size(); ++i){
         fit_funcs[i] = TS_fitness_function_coord(batch[i], map);
@@ -239,7 +254,7 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<pair<
     });
 
     // number of batches - 4, batch sizes 10%, 20%, 30%, 40%, probability of bathces - 50%, 30%, 15%, 5%
-
+   // new_batch.push_back(batch[range_list[0].first]);
     for(size_t i = 0; i < new_population_size; ++i){
         int ch = rand() % 100;
         size_t its = 0;
@@ -251,8 +266,25 @@ static vector<vector<int>> TS_selection(vector<vector<int>>& batch, vector<pair<
             its = (rand() % ((batch.size() / 10) * 3)) + ((batch.size() / 5));
         else
             its = (rand() % ((batch.size() / 5) * 2)) + ((batch.size() / 10) * 3 );
-        new_batch.push_back(batch[its]);
+        new_batch.push_back(batch[range_list[its].first]);
     }
+
+/*
+
+    for(size_t i = 0; i < new_population_size; ++i){
+        int ch = rand() % 100;
+        size_t its = 0;
+        if(ch<50)
+            its = rand() % (int)round((double)batch.size() / 4.);
+        else if(ch<80)
+            its = (rand() % ((int)round((double)batch.size() / 4.))) + (int)round((double)batch.size() / 4.);
+        else if (ch<95)
+            its = (rand() % ((int)round((double)batch.size() / 4.)))  + ((int)round((double)batch.size() / 2.));
+        else
+            its = (rand() % ((int)round((double)batch.size() / 4.))) + ((int)round((double)batch.size() / 4.) * 3 );
+        if(its>=batch.size()) its = batch.size()-1;
+        new_batch.push_back(batch[range_list[its].first]);
+    }*/
 
     return new_batch;
 }
@@ -305,21 +337,36 @@ void partially_mapped_crossover(vector<int>& chrm1, vector<int>& chrm2){
 double salesman_problem_genalg(vector<pair<double, double>>& map, int population_size,
                                int it_population_size, size_t iterations, bool show_res = false){
     vector<vector<int>> new_batch = make_start_batch(population_size, map.size(), 0);
-    //vector<vector<int>> new_batch;
+    vector<vector<int>> tmp_new_batch;
     for(size_t it = 0; it<iterations; ++it){
         new_batch=TS_selection(new_batch, map, it_population_size);
-        for(size_t i = 0; i<population_size/2; ++i){
+        for(size_t i = 0; i<it_population_size; ++i){
             auto cros_ch = rand() % 100;
-            if(cros_ch < 90) {
+            if(cros_ch < 80) {
                 auto ch1 = rand() % new_batch.size();
                 auto ch2 = rand() % new_batch.size();
                 if (ch1 == ch2 && ch2 != new_batch.size() - 1) ch2 = ch1 + 1;
                 else if (ch1 == ch2) ch2 = ch1 - 1;
-                partially_mapped_crossover(new_batch[ch1], new_batch[ch2]);
+                auto tmpvec1 = new_batch[ch1];
+               auto tmpvec2 = new_batch[ch2];
+               partially_mapped_crossover(tmpvec1, tmpvec2);
+            //    partially_mapped_crossover(new_batch[ch1], new_batch[ch2]);
+                tmp_new_batch.push_back(tmpvec1);
+                tmp_new_batch.push_back(tmpvec2);
+                //it++;
+                i++;
+            }
+            else {
+                auto ch1 = rand() % new_batch.size();
+                tmp_new_batch.push_back(new_batch[ch1]);
             }
         }
+        int mpr = 10;
+      //  if(it>1000) mpr = 20;
+        new_batch = tmp_new_batch;
+        tmp_new_batch.clear();
         for(size_t i = 0; i<new_batch.size(); ++i)
-            if(5 >= (rand() % 100)){
+            if(mpr >= (rand() % 100)){
                 swap_mutation(new_batch[i]);
             }
     }
@@ -346,20 +393,34 @@ double salesman_problem_genalg(vector<pair<double, double>>& map, int population
 double salesman_problem_genalg(vector<vector<double>>& map, int population_size, int it_population_size,
                                size_t iterations, bool show_res = false){
     vector<vector<int>> new_batch = make_start_batch(population_size, map.size(), 0);
+    vector<vector<int>> tmp_new_batch;
     for(size_t it = 0; it<iterations; ++it){
-        new_batch=TS_selection(new_batch, map, it_population_size);
-        for(size_t i = 0; i<population_size/2; ++i){
+        new_batch=TS_selection(new_batch, map, population_size);
+        for(size_t i = 0; i<it_population_size; ++i){
             auto cros_ch = rand() % 100;
-            if(cros_ch < 90) {
+            if(cros_ch < 80) {
                 auto ch1 = rand() % new_batch.size();
                 auto ch2 = rand() % new_batch.size();
                 if (ch1 == ch2 && ch2 != new_batch.size() - 1) ch2 = ch1 + 1;
                 else if (ch1 == ch2) ch2 = ch1 - 1;
-                partially_mapped_crossover(new_batch[ch1], new_batch[ch2]);
+                auto tmpvec1 = new_batch[ch1];
+                auto tmpvec2 = new_batch[ch2];
+                partially_mapped_crossover(tmpvec1, tmpvec2);
+                //    partially_mapped_crossover(new_batch[ch1], new_batch[ch2]);
+                tmp_new_batch.push_back(tmpvec1);
+                tmp_new_batch.push_back(tmpvec2);
+                i++;
+                //it++;
+            }
+            else {
+                auto ch1 = rand() % new_batch.size();
+                tmp_new_batch.push_back(new_batch[ch1]);
             }
         }
+        new_batch = tmp_new_batch;
+        tmp_new_batch.clear();
         for(size_t i = 0; i<new_batch.size(); ++i)
-            if(5 >= (rand() % 100)){
+            if(15 >= (rand() % 100)){
                 swap_mutation(new_batch[i]);
             }
     }
@@ -435,13 +496,51 @@ int knapack_main() {
     return 0;
 }
 
+vector<int> get_true_data(string filename){
+    vector<int> res;
+    string file_template = "../data/";
+    ifstream testfile(file_template+filename);
+    string tmp_text="a";
+    while(!testfile.eof()) {
+        getline(testfile, tmp_text);
+        res.push_back(stoi(tmp_text));
+    }
+    return res;
+}
+
 int main() {
-    knapack_main();
+    srand(time(0));
+    //   vector<pair<int, int>> data= {{0, 0}, {0, 5}, {2, 3}, {5, 5}, {8, 3}, {6, 0}};
+    vector<vector<double>> data= {{0, 34, 36, 37, 31, 33, 35},
+                                {34, 0, 29, 23, 22, 25, 24},
+                               {36, 29, 0, 17, 12, 18, 17},
+                                {37, 23, 17, 0, 32, 30, 29},
+                                {31, 22, 12, 32, 0, 26, 24},
+                                 {33, 25, 18, 30, 26, 0, 19},
+                                 {35, 24, 17, 29, 24, 19, 0}};
+    //   auto check = make_start_batch(10, 5, 0);
+    //  auto check2 = get_len({0,0},{4,3});
+//    auto check3 = TS_selection(check, data, 7);
+//    vector<int> c1 = {8,2,3,7,1,6,0,5,4,8};
+//    vector<int> c2 = {8,3,1,4,0,5,7,2,6,8};
+//    partially_mapped_crossover(c1, c2);
+       cout<<salesman_problem_genalg(data, 80, 80, 120, true)<<endl;
+
+       cout<<"OPTIMAL"<<endl;
+
+
+   // cout<<TS
+
+   // return 0;
+
+   // knapack_main();
 
     std::chrono::steady_clock::time_point pr_StartTime;
     std::chrono::steady_clock::time_point pr_EndTime;
     string file_template = "../data/";
-    vector<string> file_names = {"a280.tsp", "att48.tsp", "bays29 coord.tsp", "ch150.tsp", "fl417.tsp"};
+    vector<string> file_names = {"a280.tsp", "att48.tsp", "ch150.tsp", "fl417.tsp"};
+
+  //  vector<string> file_names = {"fl417.tsp"};
     for (auto& file_name : file_names){
         cout<<"Now testing sample "<<file_name<<endl;
         vector<pair<double, double>> map;
@@ -466,10 +565,33 @@ int main() {
             tmp_coord.second = stod(num_s);
             map.push_back(tmp_coord);
         }
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 77, true)<<endl;
+
+        if(file_name=="att48.tsp") {
+            auto tmp = get_true_data("att48.opt.tour");
+            for(auto i = 0; i<tmp.size(); ++i){
+                tmp[i]--;
+            }
+            cout<<"TRUUUUE ==== "<< TS_fitness_function_coord(tmp, map)<<endl;
+        }
+        else if(file_name=="a280.tsp"){
+            auto tmp = get_true_data("a280.opt.tour");
+            for(auto i = 0; i<tmp.size(); ++i){
+                tmp[i]--;
+            }
+             cout<<"TRUUUUE ==== "<< TS_fitness_function_coord(tmp, map)<<endl;
+        }
+        else if(file_name=="bays29.tsp"){
+            auto tmp = get_true_data("bays29.opt.tour");
+            for(auto i = 0; i<tmp.size(); ++i){
+                tmp[i]--;
+            }
+            cout<<"TRUUUUE ==== "<< TS_fitness_function_coord(tmp, map)<<endl;
+        }
+      //  else if(file_name=="att48.tsp") cout<<"TRUUUUE ==== "<< TS_fitness_function_coord(tr, map)<<endl;
+        cout<<"answer - "<<salesman_problem_genalg(map, 250, 250, 2300, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
         for(size_t n = 0; n < 10; ++n) {
-            salesman_problem_genalg(map, map.size(), map.size() / 2, 77);
+            salesman_problem_genalg(map, 250, 250, 2300);
         }
             pr_EndTime = std::chrono::steady_clock::now();
             std::cout << " total time is = "
@@ -479,6 +601,7 @@ int main() {
 
 
     vector<string> file_names2 = {"bays29.tsp"};
+   // file_names2.clear();
     for (auto& file_name : file_names2){
         cout<<"Now testing sample "<<file_name<<endl;
         vector<vector<double>> map;
@@ -499,10 +622,16 @@ int main() {
             map.push_back(tmp_row);
             tmp_row.clear();
         }
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 77, true)<<endl;
+        auto tmp = get_true_data("bays29.opt.tour");
+        for(auto i = 0; i<tmp.size(); ++i){
+            tmp[i]--;
+        }
+        cout<<"TRUUUUE ==== "<< TS_fitness_function_coord(tmp, map)<<endl;
+
+        cout<<"answer - "<<salesman_problem_genalg(map, 400, 400, 5000, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
         for(size_t n = 0; n < 10; ++n) {
-            salesman_problem_genalg(map, map.size(), map.size() / 2, 77);
+            salesman_problem_genalg(map, 400, 400, 5000);
         }
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "
@@ -511,6 +640,7 @@ int main() {
     }
 
     vector<string> file_names3 = {"gr17.tsp"};
+  //  file_names3.clear();
     for (auto& file_name : file_names3){
         cout<<"Now testing sample "<<file_name<<endl;
         vector<vector<double>> map;
@@ -542,10 +672,10 @@ int main() {
                 map[i][j] = map[j][i];
             }
         }
-        cout<<"answer - "<<salesman_problem_genalg(map, map.size(), map.size()/2, 77, true)<<endl;
+        cout<<"answer - "<<salesman_problem_genalg(map, 400, 400, 3770, true)<<endl;
         pr_StartTime = std::chrono::steady_clock::now();
         for(size_t n = 0; n < 10; ++n) {
-            salesman_problem_genalg(map, map.size(), map.size() / 2, 77);
+            salesman_problem_genalg(map, 400, 400, 2770);
         }
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "

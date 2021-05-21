@@ -71,10 +71,25 @@ vector<int>& BestLocalSearch(vector<int>& location2factory, QAP_data& data,
 	long long& fitness_function_value) {
 	vector<int> location2factory_buf = location2factory;
 	long long ffunc_value_best = data.fitness_function(location2factory);
+	int size = location2factory.size();
 
-	for (int i = 0; i < location2factory.size() - 1; ++i) {
-		for (int j = i + 1; j < location2factory.size(); ++j) {
-			swap(location2factory_buf[i], location2factory_buf[j]);
+	for (int i = 0; i < size - 1; ++i) {
+		for (int j = i + 1; j < size; ++j) {
+			// stochastic 2-opt
+			int first = rand() % size;
+			int second = rand() % size;
+			if (second < first) swap(first, second);
+
+			int first_copy = first;
+			int second_copy = second;
+
+			while (first_copy < second_copy) {
+				swap(location2factory_buf[first_copy], location2factory_buf[second_copy]);
+				++first_copy;
+				--second_copy;
+			}
+
+			//swap(location2factory_buf[i], location2factory_buf[j]);
 
 			long long new_ffunc_value = data.fitness_function(location2factory_buf);
 			if (new_ffunc_value < ffunc_value_best) {
@@ -82,7 +97,13 @@ vector<int>& BestLocalSearch(vector<int>& location2factory, QAP_data& data,
 				ffunc_value_best = new_ffunc_value;
 			}
 
-			swap(location2factory_buf[i], location2factory_buf[j]);
+			//swap(location2factory_buf[i], location2factory_buf[j]);
+			while (first < second) {
+				swap(location2factory_buf[first], location2factory_buf[second]);
+				++first;
+				--second;
+			}
+			int a = 5;
 		}
 	}
 
@@ -90,21 +111,17 @@ vector<int>& BestLocalSearch(vector<int>& location2factory, QAP_data& data,
 	return location2factory;
 }
 
-void perturbation(vector<int>& vec) {
-	// stochastic 2-opt
+void perturbation(vector<int>& vec, int pert_coef) {
 	int size = vec.size();
-	int first = rand() % size;
-	int second = rand() % size;
-	if (second < first) swap(first, second);
+	for (int i = 0; i < pert_coef; ++i) {
+		int first = rand() % size;
+		int second = rand() % size;
 
-	while (first < second) {
 		swap(vec[first], vec[second]);
-		++first;
-		--second;
 	}
 }
 
-vector<int> IteratedLocalSearch(string tai_filename, int iterations, 
+vector<int> IteratedLocalSearch(string tai_filename, int iterations, int pert_coef,
 	long long& best_value) {
 	// getting the data
 	QAP_data data(tai_filename);
@@ -117,15 +134,15 @@ vector<int> IteratedLocalSearch(string tai_filename, int iterations,
 	for (int i = 0; i < size; ++i) {
 		location2factory[i] = i;
 	}
-	vector<int> location2factory_best = location2factory;
 
 	// local search
 	long long fitness_function_value = 0;  // just an additional returned value
 	location2factory = BestLocalSearch(location2factory, data, fitness_function_value);
+	vector<int> location2factory_best = location2factory;
 
 	for (int i = 0; i < iterations; ++i) {
 		// perturbation
-		perturbation(location2factory);
+		perturbation(location2factory, pert_coef);
 
 		// local search
 		long long fitness_function_value_perturb = 0;

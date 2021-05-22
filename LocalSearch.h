@@ -14,6 +14,8 @@ public:
 	void out_dists(ostream& out);
 	void out_flows(ostream& out);
 	long long  fitness_function(vector<int>& location2factory);
+    long long QAP_data::recalculateFitness(vector<int>& sol, size_t i,
+                                           size_t j, long long old_val);
 	int size();
 
 private:
@@ -65,7 +67,13 @@ int QAP_data::size() {
 	return dists.size();
 }
 
-
+long long QAP_data::recalculateFitness(vector<int>& sol, size_t i, size_t j, long long old_val){
+    long long delta = 0;
+    for(size_t n =0; n < sol.size(); ++n){
+        delta -= dists.item(sol[i], sol[j]) * flows.item(sol[i], sol[j]);
+    }
+    return delta;
+}
 
 vector<int>& BestLocalSearch(vector<int>& location2factory, QAP_data& data, 
 	long long& fitness_function_value) {
@@ -159,4 +167,59 @@ vector<int> IteratedLocalSearch(string tai_filename, int iterations, int pert_co
 
 	best_value = fitness_function_value;
 	return location2factory;
+}
+
+static vector<int> makeRandomStartBatch(const int number_of_ver){
+    vector<int> range(number_of_ver);
+    vector<int> result(number_of_ver);
+    for(int i = 0; i < number_of_ver; ++i) {
+        range[i] = i;
+    }
+    for(int i = 0; i < number_of_ver; ++i) {
+            auto el = rand() % (number_of_ver - i);
+            result[i]=el;
+            swap(range[el], range[number_of_ver - i - 1]);
+    }
+    return result;
+};
+
+static void twoOptSwap(vector<int>& vec){
+    int first = rand() % vec.size();
+    int second = rand() % vec.size();
+    if (second == first && first < vec.size()-1) first++;
+    else first--;
+    swap(vec[first], vec[second]);
+}
+
+
+
+//first-improvement
+vector<int> SimpleLocalSearch(string tai_filename, int iterations,
+                              long long& best_value){
+    // getting the data
+    QAP_data data(tai_filename);
+    int size = data.size();
+   // vector<int> dont_look_bits(size, 0);
+    // generating a random solution
+    auto sol = makeRandomStartBatch(size);
+    auto val = data.fitness_function(sol);
+    for(size_t n = 0; n < iterations; ++n){
+        vector<int> dont_look_bits(size, 0);
+        for(size_t i = 0; i < size; ++i) {
+            for (size_t j = 0; j < size; ++j) {
+                if(i!=j && dont_look_bits[j]==0) {
+                    auto tmp_val = data.recalculateFitness(sol, i, j,  val);
+                    if (tmp_val > val) {
+                        val = tmp_val;
+                        swap(sol[i], sol[j]);
+                        break;
+                    }
+                }
+                if(j==size-1){
+                    dont_look_bits[i]=1;
+                }
+            }
+        }
+    }
+    return sol;
 }

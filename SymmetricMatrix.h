@@ -20,6 +20,7 @@ public:
 	void read_from_taiNa(ifstream& fin, int size);
 
 private:
+    vector<int>& operator[] (const size_t idx);
 	int values_size = 0;
 	vector<vector<int>> values;
 };
@@ -27,10 +28,11 @@ private:
 void SymmetricMatrix::initialize(int n) {
 	values_size = n;
 	values.reserve(n);
-	vector<int> empty(n);
+	//vector<int> empty(n);
 	for (int i = 0; i < n; ++i) {
+        vector<int> empty(n - i, 0);
 		values.push_back(empty);
-		empty.reserve(n - i - 1);
+       // empty.reserve(n - i - 1);
 	}
 }
 
@@ -59,6 +61,10 @@ ostream& operator<< (ostream& out, SymmetricMatrix sm) {
 	return out;
 }
 
+vector<int>& SymmetricMatrix::operator[] (const size_t idx){
+    return values[idx];
+};
+
 int& SymmetricMatrix::item(int i, int j) {
 	pair<int, int> min_max = minmax(i, j);
 	return values[min_max.first][min_max.second];
@@ -70,15 +76,12 @@ int SymmetricMatrix::size() {
 
 void SymmetricMatrix::read_from_taiNa(ifstream& fin, int size) {
 	initialize(size);
-
 	int value = 0;
-
 	for (int i = 0; i < size; ++i) {
 		for (int j = 0; j < size; ++j) {
 			fin >> value;
-			if (i >= j) {
-				item(i, j) = value;
-			}
+			if(i <= j)
+			    values[i][j - i] = value;
 		}
 	}
 }

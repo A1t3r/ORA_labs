@@ -44,7 +44,6 @@ int main() {
         fout.open("../out/first-improvement/"+file_name+".sol.txt");
         for (int i = 0; i < location2factory.size(); ++i) {
             cout << location2factory[i] << " " << i << endl;
-            fout.open("file.txt");
             fout << location2factory[i]<<" ";
         }
         fout.close();

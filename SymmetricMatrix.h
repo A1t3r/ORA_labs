@@ -67,7 +67,7 @@ vector<int>& SymmetricMatrix::operator[] (const size_t idx){
 
 int& SymmetricMatrix::item(int i, int j) {
 	pair<int, int> min_max = minmax(i, j);
-	return values[min_max.first][min_max.second];
+	return values[min_max.first][min_max.second - min_max.first];
 }
 
 int SymmetricMatrix::size() {

@@ -38,8 +38,9 @@ int main() {
         std::cout << " total time is = "
                   << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10.;
         cout << endl;
+        /*
         cout<<"First-improvement local search: "<<endl;
-        location2factory = SimpleLocalSearch(to_files+file_name, 50, best_value);
+        location2factory = SimpleLocalSearch(to_files+file_name, 200, best_value);
         cout << "Value " << best_value << endl << endl;
         fout.open("../out/first-improvement/"+file_name+".sol.txt");
         for (int i = 0; i < location2factory.size(); ++i) {
@@ -49,11 +50,12 @@ int main() {
         fout.close();
         pr_StartTime = std::chrono::steady_clock::now();
         for(size_t i =0; i < 10; ++i)
-            SimpleLocalSearch(to_files+file_name, 50, best_value);
+            SimpleLocalSearch(to_files+file_name, 200, best_value);
         pr_EndTime = std::chrono::steady_clock::now();
         std::cout << " total time is = "
                   << std::chrono::duration_cast<std::chrono::microseconds>(pr_EndTime - pr_StartTime).count() / 10.;
         cout << endl;
+        */
         cout << endl;
     }
 

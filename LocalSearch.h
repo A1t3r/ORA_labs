@@ -203,7 +203,7 @@ vector<int> SimpleLocalSearch(string tai_filename, int iterations,
     // generating a random solution
     bool flag = false;
     auto sol = makeRandomStartBatch(size);
-    auto val = data.fitness_function(sol);
+    long long val = data.fitness_function(sol);
    // vector<int> dont_look_bits(size, 0);
     for(size_t n = 0; n < iterations; ++n){
         vector<int> dont_look_bits(size, 0);
@@ -216,7 +216,7 @@ vector<int> SimpleLocalSearch(string tai_filename, int iterations,
                 if(i!=j && dont_look_bits[j]==0) {
                   //  auto tmp_val = data.recalculateFitness(sol, i, j,  val);
                     swap(sol[i], sol[j]);
-                    auto tmp_val = data.fitness_function(sol);
+                    long long tmp_val = data.fitness_function(sol);
                     if (tmp_val < val) {
                         val = tmp_val;
                         flag = true;

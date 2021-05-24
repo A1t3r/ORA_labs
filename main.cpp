@@ -42,7 +42,7 @@ int main() {
         cout<<"First-improvement local search: "<<endl;
         location2factory = SimpleLocalSearch(to_files+file_name, 200, best_value);
         cout << "Value " << best_value << endl << endl;
-        fout.open("../out/first-improvement/"+file_name+".sol.txt");
+        fout.open("../out/first-improvement(DO NOT RUIN MY SOLUTIONS)/"+file_name+".sol.txt");
         for (int i = 0; i < location2factory.size(); ++i) {
             cout << location2factory[i] << " " << i << endl;
             fout << location2factory[i]<<" ";

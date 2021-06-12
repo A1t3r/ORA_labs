@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 
 static double get_len(std::pair<int, int>& x, std::pair<int, int>& y){
@@ -32,9 +33,19 @@ public:
     void initilaze_pheromone();
     double get_road_len(size_t i, size_t j);
     double get_pheromone(size_t i, size_t j);
+    int get_demand(size_t i);
+    int get_capacity();
     void set_params(float alpha, float beta);
     int get_dimension();
     double get_started_value();
+    void save_to_file(std::vector<std::vector<int>>){};
+};
+
+int AntColonyData::get_demand(size_t i){
+    return demand[i];
+};
+int AntColonyData::get_capacity(){
+    return capacity;
 };
 
 double AntColonyData::get_started_value(){
@@ -129,23 +140,44 @@ void AntColonyData::parse_data(std::ifstream& fin) {
 
 // ALGORITHM
 
-void AntAlgorithm(AntColonyData& data, int number_of_its, float alpha, float beta){
+double AntAlgorithm(AntColonyData& data, int number_of_its, float alpha, float beta){
+    srand(time(0));
+    std::vector<std::vector<int>> total_rout;
     double best_found_value = data.get_started_value();
     data.set_params(alpha, beta);
     data.initilaze_pheromone(); // init with 1/dimension probability
+    double lower_sum = 0;
     double probability_sum = 1;
     auto dim = data.get_dimension();
+    for(auto i =0; i<dim; ++i){
+        for(auto j =0; j<dim; ++j){
+            if(i!=j)
+                lower_sum+=pow(data.get_pheromone(i, j), alpha) *
+                        pow((double)(1/data.get_road_len(i, j)),beta);
+        }
+    }
     std::vector<double> probabilities(dim);
-    std::vector<bool> visited(dim);
+    std::vector<bool> visited(dim, false);
     for(size_t it =0; it<number_of_its; ++it){
+        int ant_cap = data.get_capacity();
         for(size_t i =0; i<dim; ++i){
             for(size_t j =0; j<dim; ++j){
-                //to be dome yet
+                if(!visited[j] && i!=j) {
+                    auto tmppr = ((data.get_pheromone(i, j), alpha) *
+                                  pow((double) (1 / data.get_road_len(i, j)), beta)) / lower_sum;
+                    int len_to_calc = std::to_string(tmppr).size() - 1;
+                    int range = pow(10, len_to_calc);
+                    int tmp_var = tmppr * range;
+                    if(rand()%range>tmp_var){
+                        ant_cap-=data.get_demand(j);
+                        visited[j] = true;
+                    }
+                }
             }
         }
     }
 
-    return;
+    return best_found_value;
 }
 
 

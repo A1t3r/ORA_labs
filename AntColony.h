@@ -173,9 +173,7 @@ double AntAlgorithm(AntColonyData& data, int number_of_its, int number_of_ants, 
     data.set_params(alpha, beta);
     data.initilaze_pheromone(); // init with 1/dimension probability
     auto dim = data.get_dimension();
-
     std::vector<double> probabilities(dim);
-
 
     for(size_t it =0; it<number_of_its; ++it) {
         size_t sp = data.get_start_point();
@@ -213,11 +211,13 @@ double AntAlgorithm(AntColonyData& data, int number_of_its, int number_of_ants, 
                         }
                     }
                     auto ch = rand() % range_sum;
-                    size_t med = range_table.size() / 2;
                     size_t chosen_point = 0;
-
+                    int l = 0;
+                    int r = dim;
+                    size_t med = 0;
                     while (1) {// binary search for point chosen by rand()
-                        if (range_table[med].second <= ch && range_table[med + 1].second > ch) {
+                        med = (l + r) / 2;
+                        if (med!=dim && range_table[med].second <= ch && range_table[med + 1].second > ch) {
                             chosen_point = range_table[med + 1].first;
                             break;
                         } else if (range_table[med].second >= ch) {
@@ -225,13 +225,13 @@ double AntAlgorithm(AntColonyData& data, int number_of_its, int number_of_ants, 
                                 chosen_point = range_table[0].first;
                                 break;
                             }
-                            med = med / 2;
+                            r = med;
                         } else if (range_table[med + 1].second <= ch) {
                             if (med == range_table.size() - 1) {
                                 chosen_point = range_table[range_table.size() - 1].first;
                                 break;
                             }
-                            med = med + med / 2;
+                            l = med;
                         }
                     }
                     // ant fields:::
@@ -247,7 +247,7 @@ double AntAlgorithm(AntColonyData& data, int number_of_its, int number_of_ants, 
     }
 
     return best_found_value;
-}
+    }
 
 
 #endif //ORA_LABS_ANTCOLONY_H

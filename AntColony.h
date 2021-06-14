@@ -6,7 +6,9 @@
 
 #include <string>
 #include <vector>
+#include <cmath>
 #include <iostream>
+#include <set>
 
 
 static double get_len(std::pair<int, int>& x, std::pair<int, int>& y){
@@ -16,22 +18,56 @@ static double get_len(std::pair<int, int>& x, std::pair<int, int>& y){
 
 class Ant{
     std::vector<int> path;
+    std::set<int> unvisited;
     double total_len;
     int capacity;
-    int num_visited;
+    int curr_point;
 public:
-    void add_point(int point, int capacity, double path_len){
+    void set_unvisited(int points_num) {
+        for (int i = 0; i < points_num; ++i) {
+            unvisited.insert(i);
+        }
+    }
+
+    std::vector<int>& get_path() {
+        return path;
+    }
+
+    double get_total_len() {
+        return total_len;
+    }
+
+    const std::set<int>& get_unvisited() {
+        return unvisited;
+    }
+
+    void add_point(int point, int capacity, double path_len) {
         path.push_back(point);
-        this->capacity-=capacity;
-        num_visited++;
-        total_len+=path_len;
-    };
+        this->capacity -= capacity;
+        total_len += path_len;
+        unvisited.erase(point);
+        curr_point = point;
+    }
+
+    void add_start_point(int point, int capacity, double path_len) {
+        path.push_back(point);
+        this->capacity -= capacity;
+        total_len += path_len;
+        curr_point = point;
+    }
+
+    int get_curr_point() {
+        return curr_point;
+    }
+
     void set_capacity(int cap){
         capacity=cap;
     }
-};
 
-void add_point(int point);
+    int get_capacity() {
+        return capacity;
+    }
+};
 
 class AntColonyData {
 private:
@@ -59,6 +95,8 @@ public:
     size_t get_start_point();
     int get_number_of_trucks();
     void save_to_file(std::vector<std::vector<int>>){};
+    void fade_all_pheromones(double p = 0.05);
+    void update_pheromone(int i, int j, double p = 0.05);
 };
 
 int AntColonyData::get_number_of_trucks(){
@@ -68,11 +106,12 @@ int AntColonyData::get_number_of_trucks(){
 int AntColonyData::get_demand(size_t i){
     return demand[i];
 };
+
 int AntColonyData::get_capacity(){
     return capacity;
 };
 
-size_t  AntColonyData::get_start_point(){
+size_t AntColonyData::get_start_point(){
     return start_point_it;
 };
 
@@ -97,9 +136,22 @@ void AntColonyData::initilaze_pheromone(){
     pheromone_index.initialize(this->dimension);
     for(int i =0; i<dimension; ++i){
         for(int j =0; j<dimension-i; ++j) {
-            pheromone_index.item(i,j) = (double) 1/dimension;
+            pheromone_index.item(i,j) = (double) 1 / dimension;
         }
     }
+}
+
+void AntColonyData::fade_all_pheromones(double p) {
+    double fading = 1 - p;
+    for (int i = 0; i < dimension; ++i) {
+        for (int j = 0; j < dimension - i; ++j) {
+            pheromone_index.item(i, j) *= fading;
+        }
+    }
+}
+
+void AntColonyData::update_pheromone(int i, int j, double p) {
+    pheromone_index.item(i, j) += p * (double) 1 / dimension;
 }
 
 void AntColonyData::parse_data(std::ifstream& fin) {
@@ -164,90 +216,134 @@ void AntColonyData::parse_data(std::ifstream& fin) {
 
 // ALGORITHM
 
-double AntAlgorithm(AntColonyData& data, int number_of_its, int number_of_ants, float alpha, float beta){
+int GetNextPoint(AntColonyData& data, Ant& ant, double alpha, double beta) {
+
+    std::vector<double> P_upper_coefs;
+    std::vector<int> unvisited_available;
+    double P_upper_sum = 0;
+    double curr_value = 0;
+    int curr_point = ant.get_curr_point();
+    int ant_capacity = ant.get_capacity();
+    
+    // choose where demand <= ant_capacity
+    for (const int& unvisited : ant.get_unvisited()) {
+        if (data.get_demand(unvisited) <= ant_capacity) {
+            unvisited_available.push_back(unvisited);
+        }
+    }
+
+    // not found any available
+    if (unvisited_available.size() == 0) return -1;
+
+    for (int& unvisited : unvisited_available) {
+        curr_value = pow(data.get_pheromone(curr_point, unvisited), alpha) *
+            pow((1 / data.get_road_len(curr_point, unvisited)), beta);
+
+        P_upper_sum += curr_value;
+        P_upper_coefs.push_back(curr_value);
+    }
+
+    const double accurasy = 100.;
+
+    double mult_coef = accurasy / P_upper_sum;
+
+    double choose_value = rand() % (int)floor(P_upper_sum * mult_coef);
+    int index = -1;
+    while (choose_value >= 0) {
+        ++index;
+        choose_value -= P_upper_coefs[index] * mult_coef; // might be out of range due to accum error
+    }
+
+    return unvisited_available[index];
+}
+
+void GlobalUpdate(AntColonyData& data, std::vector<Ant>& ants, int number_of_elites, double p) {
+    sort(ants.begin(), ants.end(), [](Ant& ant_l, Ant& ant_r) -> bool {
+        return ant_l.get_total_len() > ant_r.get_total_len();
+        }
+    );
+
+    if (number_of_elites > ants.size()) number_of_elites = ants.size();
+
+    // update number_of_elites best ants
+    for (int i = 0; i < number_of_elites; ++i) {
+        auto path = ants[i].get_path();
+
+        for (int j = 0; j < path.size() - 1; ++j) {
+            data.update_pheromone(path[j], path[j+1], p);
+        }
+    }
+}
+
+std::vector<int> AntAlgorithm(AntColonyData& data, int number_of_its, int number_of_ants, int number_of_elites,
+    double alpha, double beta, double p) {
+
     srand(time(0));
+
     double best_found_value = -1;
-    std::vector<std::vector<int>> total_rout;
-    //initialization
+    std::vector<int> best_path;
 
-    data.set_params(alpha, beta);
     data.initilaze_pheromone(); // init with 1/dimension probability
-    auto dim = data.get_dimension();
-    std::vector<double> probabilities(dim);
+    int dim = data.get_dimension();
 
-    for(size_t it =0; it<number_of_its; ++it) {
-        size_t sp = data.get_start_point();
+    for (size_t it = 0; it < number_of_its; ++it) {
+        int start_point = data.get_start_point();
 
-        for(size_t it_ant =0; it_ant<number_of_ants; ++it_ant) {
-            Ant ant;
-            std::vector<bool> visited(dim, false);
-            //probability computation
-            double lower_sum = 0;
-            for (auto i = 0; i < dim; ++i) {
-                for (auto j = 0; j < dim; ++j) {
-                    if (i != j)
-                        lower_sum += pow(data.get_pheromone(i, j), alpha) *
-                                     pow((double) (1 / data.get_road_len(i, j)), beta);
+        std::vector<Ant> ants(number_of_ants);
+
+        // fading pheromones
+        data.fade_all_pheromones();
+
+        for (Ant& ant : ants) {
+            // just acceleration for the next point search
+            ant.set_unvisited(dim);
+
+            ant.set_capacity(data.get_capacity());
+            ant.add_point(start_point, 0, 0);
+
+            // choosing next point with available check
+            while (ant.get_unvisited().size() != 0) {
+                int next_point = GetNextPoint(data, ant, alpha, beta);
+
+                int curr_point = ant.get_curr_point();
+
+                if (next_point == -1) { // no availabe point to go
+                    next_point = 0;
+                    ant.add_start_point(
+                        start_point, 0,
+                        data.get_road_len(ant.get_curr_point(), start_point)
+                    );
+                    ant.set_capacity(data.get_capacity());
                 }
-            }
-
-            int ant_cap = data.get_capacity(); // class ant
-
-            std::vector<std::pair<int, long>> range_table;
-            long range_sum = 0;
-
-                bool flag = true; // search for point, until cycle if found
-                while (flag) { // while (ant.memory.size()!=dimension)
-
-                    for (size_t j = 0; j < dim; ++j) { //calculate practical probabilities
-                        if (!visited[j] && sp != j) {
-                            auto tmppr = (pow(data.get_pheromone(sp, j), alpha) *
-                                          pow((double) (1 / data.get_road_len(sp, j)), beta)) / lower_sum;
-                            int len_to_calc = std::to_string(tmppr).size() - 1;
-                            len_to_calc = 5;//just eq n
-                            long tmp_var = tmppr * pow(10, len_to_calc);
-                            range_table.push_back({j, tmp_var + range_sum});
-                            range_sum += tmp_var;
-                        }
-                    }
-                    auto ch = rand() % range_sum;
-                    size_t chosen_point = 0;
-                    int l = 0;
-                    int r = dim;
-                    size_t med = 0;
-                    while (1) {// binary search for point chosen by rand()
-                        med = (l + r) / 2;
-                        if (med!=dim && range_table[med].second <= ch && range_table[med + 1].second > ch) {
-                            chosen_point = range_table[med + 1].first;
-                            break;
-                        } else if (range_table[med].second >= ch) {
-                            if (med == 0) {
-                                chosen_point = range_table[0].first;
-                                break;
-                            }
-                            r = med;
-                        } else if (range_table[med + 1].second <= ch) {
-                            if (med == range_table.size() - 1) {
-                                chosen_point = range_table[range_table.size() - 1].first;
-                                break;
-                            }
-                            l = med;
-                        }
-                    }
-                    // ant fields:::
-                    ant.add_point(chosen_point, data.get_demand(chosen_point), data.get_road_len(sp, chosen_point));
-
-                    sp = chosen_point;
-
-                    flag = false;//
+                else {
+                    ant.add_point(next_point, data.get_demand(next_point),
+                        data.get_road_len(ant.get_curr_point(), next_point));
                 }
-            //pheromone update local
+
+                // local pheromone update
+                data.update_pheromone(curr_point, next_point, p);
+            } // one ant finished
+
+            // get back to the start
+            ant.add_start_point(
+                start_point, 0,
+                data.get_road_len(ant.get_curr_point(), start_point)
+            );
+
+            // choose best from best and current
+            double ant_result = ant.get_total_len();
+            if (ant_result < best_found_value || best_found_value == -1) {
+                best_found_value = ant_result;
+                best_path = ant.get_path();
             }
-        //pheromone update global
+        } // all the ants finished
+
+        // global pheromone update
+        GlobalUpdate(data, ants, number_of_elites, p);
     }
 
-    return best_found_value;
-    }
-
+    std::cout << best_found_value << std::endl;
+    return best_path;
+}
 
 #endif //ORA_LABS_ANTCOLONY_H

@@ -71,6 +71,7 @@ public:
 
 class AntColonyData {
 private:
+    std::string file_name;
     SymmetricMatrix roads_len;
     SymmetricMatrix pheromone_index;
     int dimension;
@@ -84,7 +85,7 @@ private:
 public:
     AntColonyData(){};
     ~AntColonyData(){};
-    void parse_data(std::ifstream& fin);
+    void parse_data(std::ifstream& fin, std::string file);
     void initilaze_pheromone();
     double get_road_len(size_t i, size_t j);
     double get_pheromone(size_t i, size_t j);
@@ -94,9 +95,28 @@ public:
     int get_dimension();
     size_t get_start_point();
     int get_number_of_trucks();
-    void save_to_file(std::vector<std::vector<int>>){};
+    void save_to_file(std::vector<int>, double total, double time);
     void fade_all_pheromones(double p = 0.05);
     void update_pheromone(int i, int j, double p = 0.05);
+};
+
+void AntColonyData::save_to_file(std::vector<int> res, double total, double time){
+    std::string file_template="../output/";
+    std::ofstream outfile(file_template+this->file_name);
+    int counter = 0;
+    for(int i = 0; i < res.size()-1; ++i){
+        if(res[i] == 0 && i!=res.size()-1){
+            outfile<<"\n";
+            counter++;
+            outfile<<"Route #"<<counter<<": ";
+            continue;
+        }
+        outfile<<res[i]<<" ";
+    }
+    outfile<<"\n";
+    outfile<<"cost "<< total;
+    outfile<<"\n";
+    outfile<<"total time is "<< time;
 };
 
 int AntColonyData::get_number_of_trucks(){
@@ -154,7 +174,8 @@ void AntColonyData::update_pheromone(int i, int j, double p) {
     pheromone_index.item(i, j) += p * (double) 1 / dimension;
 }
 
-void AntColonyData::parse_data(std::ifstream& fin) {
+void AntColonyData::parse_data(std::ifstream& fin, std::string file) {
+    file_name=file;
     std::string tmps;
     // get common information
     while(tmps!="NODE_COORD_SECTION") {

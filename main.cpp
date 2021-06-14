@@ -14,7 +14,7 @@ int main(){
         5,    // ants num
         1,    // elites num
         1.0,  // alpha
-        1.5,  // beta
+        1.3,  // beta
         0.03  // p
     );
 

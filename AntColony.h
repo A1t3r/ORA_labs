@@ -335,6 +335,8 @@ std::vector<int> AntAlgorithm(AntColonyData& data, int number_of_its, int number
             if (ant_result < best_found_value || best_found_value == -1) {
                 best_found_value = ant_result;
                 best_path = ant.get_path();
+
+                std::cout << "improvement at " << it << " : " << best_found_value << std::endl;
             }
         } // all the ants finished
 
